@@ -8,7 +8,6 @@ import {
     ColorMatrixFilter 
 } from 'pixi.js';
 
-// 定义数据接口
 interface ElementData {
     id: string;
     type: 'rect' | 'circle' | 'triangle' | 'text' | 'image';
@@ -43,13 +42,6 @@ const drawShapeGeometry = (g: Graphics, elementData: ElementData) => {
     const fillColor = style.fillColor;
 
     g.clear();
-    g.stroke({ width: lineWidth, color: lineColor }); 
-
-    if (fillColor !== null && fillColor !== undefined) {
-        g.fill({ color: fillColor });
-    } else {
-        g.fill({ color: 0xFFFFFF, alpha: 0.001 }); 
-    }
 
     switch (type) {
         case 'rect':
@@ -66,9 +58,18 @@ const drawShapeGeometry = (g: Graphics, elementData: ElementData) => {
             ]);
             break;
     }
+
+    if (fillColor !== null && fillColor !== undefined) {
+        g.fill({ color: fillColor });
+    } else {
+        g.fill({ color: 0xFFFFFF, alpha: 0.001 });
+    }
+
+    if (lineWidth > 0) {
+        g.stroke({ width: lineWidth, color: lineColor });
+    }
 };
 
-// 绘制文字
 const updateShapeLabel = (container: Container, elementData: ElementData) => {
     let label = container.getChildByLabel('label') as Text;
 
@@ -79,7 +80,7 @@ const updateShapeLabel = (container: Container, elementData: ElementData) => {
 
     if (!label) {
         label = new Text({ text: '', style: { align: 'center' } });
-        label.label = 'label'; 
+        label.label = 'label';
         label.anchor.set(0.5, 0.5);
         container.addChild(label);
     }
@@ -94,30 +95,24 @@ const updateShapeLabel = (container: Container, elementData: ElementData) => {
     label.y = elementData.height / 2;
 };
 
-// 滤镜
 const applyFilters = (displayObject: Container, filterData: any) => {
     if (!filterData) {
         displayObject.filters = [];
         return;
     }
-
     const filtersToApply = [];
-
     if (filterData.blur > 0) {
         filtersToApply.push(new BlurFilter({ strength: filterData.blur }));
     }
-
     if (filterData.brightness !== 1 || filterData.contrast !== 1) {
         const colorMatrix = new ColorMatrixFilter();
         colorMatrix.brightness(filterData.brightness, false);
         colorMatrix.contrast(filterData.contrast, false);
         filtersToApply.push(colorMatrix);
     }
-
     displayObject.filters = filtersToApply;
 };
 
-// 核心函数
 export const updateOrCreateShape = (
     elementData: ElementData, 
     existingObject?: Container
@@ -136,8 +131,6 @@ export const updateOrCreateShape = (
         } 
         else if (elementData.type === 'image') {
             displayObject = new Container();
-            
-            // 透明点击区
             const hitArea = new Graphics();
             hitArea.label = 'hitArea'; 
             displayObject.addChild(hitArea);
@@ -152,7 +145,6 @@ export const updateOrCreateShape = (
         else {
              displayObject = new Graphics();
         }
-        
         displayObject.eventMode = 'static';
         displayObject.cursor = 'pointer';
     }
@@ -170,18 +162,16 @@ export const updateOrCreateShape = (
     }
     else if (elementData.type === 'image' && displayObject instanceof Container) {
         let hitArea = displayObject.getChildByLabel('hitArea') as Graphics;
-        
         if (!hitArea) {
             hitArea = new Graphics();
             hitArea.label = 'hitArea';
             displayObject.addChildAt(hitArea, 0);
         }
         hitArea.clear();
-        hitArea.fill({ color: 0xFFFFFF, alpha: 0.0001 });
         hitArea.rect(0, 0, elementData.width, elementData.height);
+        hitArea.fill({ color: 0xFFFFFF, alpha: 0.0001 });
         
         let sprite = displayObject.getChildByLabel('imageContent') as Sprite;
-        
         if (elementData.src) {
             if (!sprite) {
                 const newSprite = new Sprite(Texture.from(elementData.src));
@@ -198,6 +188,7 @@ export const updateOrCreateShape = (
         } else {
             if (sprite) sprite.visible = false;
         }
+        applyFilters(displayObject, elementData.filters);
     }
 
     // 变换

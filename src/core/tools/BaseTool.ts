@@ -11,7 +11,7 @@ export abstract class BaseTool implements ITool {
 
   onActivate() {}
   onDeactivate() {}
-  abstract onPointerDown(e: FederatedPointerEvent): void;
-  abstract onPointerMove(e: FederatedPointerEvent): void;
-  abstract onPointerUp(e: FederatedPointerEvent): void;
+  onPointerDown(e: FederatedPointerEvent) {};
+  onPointerMove(e: FederatedPointerEvent) {};
+  onPointerUp(e: FederatedPointerEvent) {};
 }

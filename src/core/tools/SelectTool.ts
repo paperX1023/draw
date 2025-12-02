@@ -4,6 +4,11 @@ import { executeCommand } from '@/core/history/HistoryManager';
 import { MoveElementCommand } from '@/core/commands/MoveElementCommand';
 import type { TransformHandleType } from '@/rendering/pixi/Transformer';
 
+interface IPointData {
+  globalX: number;
+  globalY: number;
+}
+
 export class SelectTool extends BaseTool {
   name = 'select';
   
@@ -29,13 +34,13 @@ export class SelectTool extends BaseTool {
     centerY: number;
   } | null = null;
 
-  public onTransformStart(handle: TransformHandleType, e: FederatedPointerEvent) {
+  public onTransformStart(handle: TransformHandleType, e: IPointData) {
     const el = this.store.selectedElements[0];
     if (!el) return;
 
     this.isTransforming = true;
-    this.startX = e.global.x;
-    this.startY = e.global.y;
+    this.startX = e.globalX;
+    this.startY = e.globalY;
 
     const elX = Number(el.x);
     const elY = Number(el.y);

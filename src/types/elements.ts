@@ -28,7 +28,8 @@ export interface IElement {
 
   text?: string;
   src?: string;
+  imageKey?: string;
+  _runtimeURL?: string;
   filters?: IFilters;
-
   style: IElementStyle;
 }

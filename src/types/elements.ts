@@ -27,7 +27,6 @@ export interface IElement {
   locked: boolean;
 
   text?: string;
-  src?: string;
   imageKey?: string;
   _runtimeURL?: string;
   filters?: IFilters;

@@ -1,121 +1,84 @@
 <template>
-  <div ref="canvasRef" class="canvas-wrapper">
-    <TextEditorOverlay
-        v-if="editingElementId"
-        :elementId="editingElementId"
-        @finish="endEditing"
+  <div ref="canvasContainer" class="canvas-wrapper">
+    <TextEditorOverlay 
+      v-if="editingId" 
+      :elementId="editingId" 
+      @finish="finishEditing"
     />
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue';
-import { useRenderer } from '../../composables/useRenderer';
-import { useEditorState } from '../../composables/useEditorState';
-import { useInteraction } from '../../composables/useInteraction';
-import { updateOrCreateShape } from '../pixi/ShapeFactory';
-import { drawTransformer } from '../pixi/Transformer';
-import TextEditorOverlay from '../../components/editor/TextEditorOverlay.vue';
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
+import { PixiEngine } from '@/core/render/PixiEngine';
+import { CanvasManager } from '@/core/render/CanvasManager';
+import { useEditorStore } from '@/stores/editorStore';
+import TextEditorOverlay from '@/components/editor/TextEditorOverlay.vue';
 
-const canvasRef = ref(null);
-const editingElementId = ref(null);
+const canvasContainer = ref<HTMLElement | null>(null);
+const editingId = ref<string | null>(null);
 
-const { initRenderer, cleanupHandler, getStage } = useRenderer();
-const { state, selectElement, selectedElements } = useEditorState();
-const { handlePointerDown, handlePointerMove, handlePointerUp } = useInteraction();
+// 初始化核心类
+const engine = PixiEngine.getInstance();
+const manager = new CanvasManager(); 
+const store = useEditorStore();
 
-const pixiObjectMap = new Map();
-let lastClickTime = 0;
-let lastClickId = null;
-
-const endEditing = () => {
-  console.log('✅ 结束编辑');
-  editingElementId.value = null;
+const finishEditing = () => {
+  editingId.value = null;
+  // 编辑结束，刷新选中框
+  manager.updateTransformer(store.selectedElements);
 };
 
-// --- 核心修复区域 ---
-const handleElementClick = (elementId, e) => {
-  // 【修复 1】：无论单击还是双击，第一件事就是阻止事件冒泡！
-  // 这样舞台（Stage）就永远收不到这次点击，就不会触发 endEditing 了
-  e.stopPropagation();
+onMounted(async () => {
+  if (canvasContainer.value) {
+    // 初始化引擎
+    await engine.init(canvasContainer.value);
+    
+    // 初始化交互 (所有事件逻辑都在 Manager 里)
+    manager.initInteraction();
 
-  const now = Date.now();
-  const diff = now - lastClickTime;
+    // 绑定双击编辑回调 (从 Core 通知 UI)
+    manager.onEditStart = (id: string) => {
+      editingId.value = id;
+    };
+    manager.onEditEnd = () => {
+      finishEditing();
+    };
 
-  // 双击判断
-  if (lastClickId === elementId && diff < 300) {
-    console.log('🚀 触发双击！进入编辑模式');
-    editingElementId.value = elementId;
-    selectElement(null); // 隐藏蓝色选中框，避免遮挡
-  } else {
-    // 单击判断
-    console.log('🖱️ 单击选中');
-    const isMultiple = e.ctrlKey || e.metaKey;
-    selectElement(elementId, isMultiple);
-    handlePointerDown({ globalX: e.global.x, globalY: e.global.y }, elementId);
-  }
-
-  lastClickTime = now;
-  lastClickId = elementId;
-};
-// --------------------
-
-const renderElement = (elementData) => {
-  const stage = getStage();
-  if (!stage) return;
-
-  let displayObject = pixiObjectMap.get(elementData.id);
-  displayObject = updateOrCreateShape(elementData, displayObject);
-
-  if (!pixiObjectMap.has(elementData.id)) {
-    pixiObjectMap.set(elementData.id, displayObject);
-    stage.addChild(displayObject);
-
-    displayObject.on('pointerdown', (e) => {
-      handleElementClick(elementData.id, e);
-    });
-  }
-};
-
-onMounted(() => {
-  if (canvasRef.value) {
-    initRenderer(canvasRef.value);
-    const stage = getStage();
-
-    // 舞台背景点击
-    stage.on('pointerdown', (e) => {
-      // 只有当点击真正落在背景上（没被 stopPropagation 拦截）时才会执行这里
-      if (editingElementId.value) {
-        console.log('点击背景 -> 关闭编辑器');
-        endEditing();
-        return;
+    // 初始数据渲染
+    await store.initFromStorage(); 
+    await nextTick();
+    console.log('🔄 渲染器启动，加载图元:', store.elements.length);
+    
+    // 初始全量渲染
+    store.elements.forEach(el => manager.renderElement(el));
+    
+    // 监听数据变化 (UI -> Core)
+    watch(() => store.elements, (newElements) => {
+      newElements.forEach(el => manager.renderElement(el));
+      manager.garbageCollect(newElements);
+      
+      if (!editingId.value) {
+        manager.updateTransformer(store.selectedElements);
       }
-      console.log('点击背景 -> 取消选中');
-      selectElement(null); // 确保清空选中
-      handlePointerDown({ globalX: e.global.x, globalY: e.global.y }, null);
-    });
-
-    stage.on('pointermove', (e) => {
-      handlePointerMove({ globalX: e.global.x, globalY: e.global.y });
-    });
-
-    stage.on('pointerup', handlePointerUp);
-    stage.on('pointerupoutside', handlePointerUp);
-
-    state.elements.forEach(renderElement);
-    watch(() => state.elements, (newElements) => {
-      newElements.forEach(renderElement);
     }, { deep: true });
 
-    watch(selectedElements, (newSelected) => {
-      if (editingElementId.value) return;
-      drawTransformer(newSelected);
+    // 监听选中变化
+    watch(() => store.selectedElements, (newSelected) => {
+      if (!editingId.value) {
+        manager.updateTransformer(newSelected);
+      }
     }, { deep: true });
+
+    // 监听工具变化 (连接 ToolManager)
+    watch(() => store.activeTool, (newTool) => {
+      manager.setTool(newTool);
+    }, { immediate: true });
   }
 });
 
 onUnmounted(() => {
-  if (cleanupHandler) cleanupHandler();
+  engine.destroy();
 });
 </script>
 
@@ -124,5 +87,6 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   position: relative;
+  overflow: hidden;
 }
 </style>

@@ -22,30 +22,46 @@
         </div>
       </div>
 
+      <div v-if="currentElement.type === 'image'" class="control-group">
+        <h5>图像滤镜</h5>
+        <div class="slider-row">
+          <label>模糊: {{ currentElement.filters.blur }}px</label>
+          <input type="range" min="0" max="20" step="0.5" :value="currentElement.filters.blur"
+            @input="(e) => handleFilterChange('blur', e.target.value)"
+            @change="(e) => handleFilterFinish('blur', e.target.value)" />
+        </div>
+        <div class="slider-row">
+          <label>亮度: {{ Math.round(currentElement.filters.brightness * 100) }}%</label>
+          <input type="range" min="0" max="2" step="0.05" :value="currentElement.filters.brightness"
+            @input="(e) => handleFilterChange('brightness', e.target.value)"
+            @change="(e) => handleFilterFinish('brightness', e.target.value)" />
+        </div>
+        <div class="slider-row">
+          <label>对比度: {{ Math.round(currentElement.filters.contrast * 100) }}%</label>
+          <input type="range" min="0" max="3" step="0.05" :value="currentElement.filters.contrast"
+            @input="(e) => handleFilterChange('contrast', e.target.value)"
+            @change="(e) => handleFilterFinish('contrast', e.target.value)" />
+        </div>
+        <div style="text-align: right; margin-top: 8px;">
+          <button class="mini-btn" @click="resetFilters">重置滤镜</button>
+        </div>
+      </div>
+
       <div class="control-group">
         <h5>样式</h5>
-
         <div class="color-row">
           <label>填充</label>
           <div class="color-wrapper">
-            <input
-                type="color"
-                :value="safeColorToHex(currentElement.style.fillColor)"
-                @input="(e) => handleColorUpdate('fillColor', e.target.value)"
-            />
+            <input type="color" :value="safeColorToHex(currentElement.style.fillColor)"
+              @input="(e) => handleColorUpdate('fillColor', e.target.value)" />
             <button @click="clearFill" class="mini-btn" title="无填充">🚫</button>
           </div>
         </div>
-
         <div class="color-row">
           <label>边框</label>
-          <input
-              type="color"
-              :value="safeColorToHex(currentElement.style.lineColor)"
-              @input="(e) => handleColorUpdate('lineColor', e.target.value)"
-          />
+          <input type="color" :value="safeColorToHex(currentElement.style.lineColor)"
+            @input="(e) => handleColorUpdate('lineColor', e.target.value)" />
         </div>
-
         <InputControl label="线宽" v-model.number="currentElement.style.lineWidth" @change="handleStyleUpdate" />
       </div>
 
@@ -56,19 +72,11 @@
         </div>
         <div class="color-row">
           <label>颜色</label>
-          <input
-              type="color"
-              :value="safeColorToHex(currentElement.style.color)"
-              @input="(e) => handleColorUpdate('color', e.target.value)"
-          />
+          <input type="color" :value="safeColorToHex(currentElement.style.color)"
+            @input="(e) => handleColorUpdate('color', e.target.value)" />
         </div>
-        <textarea
-            class="text-content-edit"
-            v-model="currentElement.text"
-            @change="handleUpdate"
-            rows="3"
-            placeholder="输入文本内容"
-        ></textarea>
+        <textarea class="text-content-edit" v-model="currentElement.text" @change="handleUpdate" rows="3"
+          placeholder="输入文本内容"></textarea>
       </div>
 
     </div>
@@ -77,57 +85,88 @@
 
 <script setup>
 import { computed } from 'vue';
-import { useEditorState } from '../../composables/useEditorState';
-// 假设您已经创建了 InputControl，如果没有，下面会提供简单的内联实现替代方案
+import { useEditorStore } from '@/stores/editorStore';
+import { executeCommand } from '../../core/history/HistoryManager';
+import { UpdateElementCommand } from '../../core/commands/UpdateElementCommand';
 import InputControl from '../base/InputControl.vue';
 
-const { selectedElements, updateElement } = useEditorState();
+const store = useEditorStore();
 
 const currentElement = computed(() => {
-  return selectedElements.value.length === 1 ? selectedElements.value[0] : null;
+  return store.selectedElements.length === 1 ? store.selectedElements[0] : null;
 });
 
-// --- 核心修复：安全的颜色转换函数 ---
 const safeColorToHex = (colorNum) => {
-  // 【关键修复】如果颜色是 null 或 undefined，返回白色作为默认显示，防止报错
-  if (colorNum === null || colorNum === undefined) {
-    return '#FFFFFF';
-  }
+  if (colorNum === null || colorNum === undefined) return '#FFFFFF';
+  if (typeof colorNum === 'string') return colorNum;
   return '#' + colorNum.toString(16).padStart(6, '0').toUpperCase();
 };
 
-// 通用更新
 const handleUpdate = () => {
   if (currentElement.value) {
-    // 触发响应式更新
-    updateElement(currentElement.value.id, { ...currentElement.value });
+    store.updateElement(currentElement.value.id, { ...currentElement.value });
   }
 };
 
-// 样式更新 (深层对象)
 const handleStyleUpdate = () => {
   if (currentElement.value) {
-    updateElement(currentElement.value.id, { style: { ...currentElement.value.style } });
+    store.updateElement(currentElement.value.id, { style: { ...currentElement.value.style } });
   }
 };
 
-// 颜色更新
 const handleColorUpdate = (key, hexString) => {
   if (currentElement.value) {
-    const colorNum = parseInt(hexString.slice(1), 16);
-    updateElement(currentElement.value.id, {
-      style: { [key]: colorNum }
-    });
+    const oldColor = currentElement.value.style[key];
+
+    const command = new UpdateElementCommand(
+      currentElement.value.id,
+      { style: { ...currentElement.value.style, [key]: oldColor } }, // 旧
+      { style: { ...currentElement.value.style, [key]: newColor } }  // 新
+    );
+    executeCommand(command);
   }
 };
 
-// 清除填充色 (变透明)
 const clearFill = () => {
   if (currentElement.value) {
-    updateElement(currentElement.value.id, {
-      style: { fillColor: null }
-    });
+    const oldFill = currentElement.value.style.fillColor;
+    const command = new UpdateElementCommand(
+      currentElement.value.id,
+      { style: { ...currentElement.value.style, fillColor: oldFill } },
+      { style: { ...currentElement.value.style, fillColor: null } }
+    );
+    executeCommand(command);
   }
+};
+
+const handleFilterChange = (key, value) => {
+  if (!currentElement.value) return;
+  const numValue = Number(value);
+  currentElement.value.filters[key] = numValue;
+};
+
+const handleFilterFinish = (key, value) => {
+  if (!currentElement.value) return;
+  const numValue = Number(value);
+  const currentFilters = { ...currentElement.value.filters };
+
+  const command = new UpdateElementCommand(
+    currentElement.value.id,
+    { filters: { ...currentFilters, [key]: currentFilters[key] } },
+    { filters: { ...currentFilters, [key]: numValue } }
+  );
+  executeCommand(command);
+};
+
+const resetFilters = () => {
+  if (!currentElement.value) return;
+  const defaultFilters = { blur: 0, brightness: 1, contrast: 1 };
+  const command = new UpdateElementCommand(
+    currentElement.value.id,
+    { filters: { ...currentElement.value.filters } },
+    { filters: defaultFilters }
+  );
+  executeCommand(command);
 };
 </script>
 
@@ -140,10 +179,24 @@ const clearFill = () => {
   color: #333;
 }
 
-h3, h5 { margin: 0 0 10px 0; color: #555; }
-h5 { font-size: 12px; text-transform: uppercase; color: #999; margin-top: 10px; }
+h3,
+h5 {
+  margin: 0 0 10px 0;
+  color: #555;
+}
 
-.hint { color: #999; text-align: center; margin-top: 50px; }
+h5 {
+  font-size: 12px;
+  text-transform: uppercase;
+  color: #999;
+  margin-top: 10px;
+}
+
+.hint {
+  color: #999;
+  text-align: center;
+  margin-top: 50px;
+}
 
 .control-group {
   border-bottom: 1px solid #eee;
@@ -186,5 +239,21 @@ h5 { font-size: 12px; text-transform: uppercase; color: #999; margin-top: 10px; 
   padding: 6px;
   font-family: inherit;
   resize: vertical;
+}
+
+.slider-row {
+  margin-bottom: 12px;
+  font-size: 12px;
+}
+
+.slider-row label {
+  display: block;
+  margin-bottom: 4px;
+  color: #666;
+}
+
+.slider-row input[type=range] {
+  width: 100%;
+  display: block;
 }
 </style>

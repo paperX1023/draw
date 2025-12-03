@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed, watch } from 'vue';
 import { AssetManager } from '@/core/storage/AssetManager'; 
+import { createElement } from '@/core/models/ElementModel';
 import type { IElement, ElementType, IElementStyle } from '@/types/elements';
 
 const STORAGE_KEY = 'my-editor-data';
@@ -78,41 +79,12 @@ export const useEditorStore = defineStore('editor', () => {
 
   // 创建新元素
   const createNewElementAt = (type: ElementType, x: number, y: number, extraData: any = {}) => {
-    let width = 100, height = 100;
-    
-    if (type === 'rect' || type === 'circle' || type === 'triangle') {
-        width = 1; height = 1; 
-    } else if (type === 'text') {
-        width = 100; height = 30;
-    } else if (type === 'image') {
-        width = extraData.width || 200;
-        height = extraData.height || 200;
-    }
-
-    const style: IElementStyle = {
-      fillColor: type === 'image' ? null : '#ffffff', 
-      lineColor: '#000000',
-      lineWidth: type === 'image' ? 0 : 2, 
-      fontSize: 24,
-      fontFamily: 'Arial',
-      fontColor: '#000000', 
-    };
-
-    const newElement: IElement = {
-      id: generateId(),
-      type,
-      x, y, width, height,
-      rotation: 0,
-      visible: true,
-      locked: false,
-      text: type === 'text' ? '双击输入' : '',
-      style, 
-      ...extraData 
-    };
-
-    if (type === 'image') {
-        newElement.filters = { ...DEFAULT_FILTERS };
-    }
+    const newElement = createElement({
+        type, 
+        x, 
+        y, 
+        ...extraData // 透传 width, height, src, imageKey 等
+    });
 
     elements.value.push(newElement);
     return newElement.id;

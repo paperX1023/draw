@@ -14,7 +14,10 @@ interface CreateElementPayload {
   width?: number;
   height?: number;
   style?: Partial<IElementStyle>; 
-  [key: string]: any; // 传入 src, imageKey, _runtimeURL, filters 等
+  text?: string;
+  imageKey?: string;
+  _runtimeURL?: string;
+  filters?: any;
 }
 
 // 元素创建工厂函数
@@ -46,7 +49,7 @@ export const createElement = (payload: CreateElementPayload): IElement => {
 
   // 默认样式策略
   const defaultStyle: IElementStyle = {
-    fillColor: type === 'image' ? null : '#ffffff',
+    fillColor: null,
     lineColor: '#000000',
     lineWidth: type === 'image' ? 0 : 2,
     fontSize: 24,
@@ -72,6 +75,6 @@ export const createElement = (payload: CreateElementPayload): IElement => {
     
     filters: type === 'image' ? { ...DEFAULT_FILTERS, ...rest.filters } : undefined,
     
-    ...rest // 透传 src, imageKey, _runtimeURL
+    ...rest
   };
 };

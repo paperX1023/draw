@@ -31,10 +31,17 @@ const element = computed(() => {
   return store.elements.find(e => e.id === props.elementId);
 });
 
+const toCssColor = (color: number | string | null | undefined) => {
+  if (color == null) return '#000000';
+  if (typeof color === 'string') return color;
+  return '#' + color.toString(16).padStart(6, '0').toUpperCase();
+};
+
 // 计算输入框样式
 const styleObject = computed<CSSProperties>(() => {
   if (!element.value) return { display: 'none' };
   const el = element.value;
+  const s = el.style ?? {};
   
   const x = Number(el.x);
   const y = Number(el.y);
@@ -42,8 +49,9 @@ const styleObject = computed<CSSProperties>(() => {
   const h = Number(el.height);
   
   // 字体样式同步
-  const fontSize = Number(el.style.fontSize || 24);
-  const fontFamily = el.style.fontFamily || 'Arial';
+  const fontSize = Number(s.fontSize || 24);
+  const fontFamily = s.fontFamily || 'Arial';
+  const fontColor = toCssColor(s.fontColor);
   // 垂直居中
   const lineHeight = fontSize * 1.2;
   const paddingTop = (h - lineHeight) / 2;
@@ -57,14 +65,14 @@ const styleObject = computed<CSSProperties>(() => {
     
     // 旋转支持
     transform: `rotate(${el.rotation || 0}rad)`,
-    transformOrigin: '0 0', // 绕左上角旋转
+    transformOrigin: '0 0',
     
     // 字体样式
     fontSize: `${fontSize}px`,
     fontFamily: fontFamily,
     lineHeight: `${lineHeight}px`,
     textAlign: 'center', 
-    color: '#000000',    
+    color: fontColor,    
     
     // 垂直居中
     paddingTop: `${paddingTop}px`, 
@@ -108,6 +116,7 @@ const handleFinish = () => {
 };
 
 const handleEnter = (e: KeyboardEvent) => {
+  if ((e as any).isComposing) return;
     if (!e.shiftKey) {
         e.preventDefault();
         inputRef.value?.blur();

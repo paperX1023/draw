@@ -1,4 +1,4 @@
-import { Application, Container, Rectangle, Point } from 'pixi.js';
+import { Application, Container, Rectangle, Point } from "pixi.js";
 
 export class PixiEngine {
   private static _instance: PixiEngine;
@@ -7,7 +7,7 @@ export class PixiEngine {
   public stage: Container | null = null;
 
   private _isInitialized = false;
-  private _zoom = 1;           // 当前缩放
+  private _zoom = 1; // 当前缩放
 
   private constructor() {}
 
@@ -32,7 +32,7 @@ export class PixiEngine {
     });
 
     this.stage = this.app.stage;
-    this.stage.eventMode = 'static';
+    this.stage.eventMode = "static";
     // 很大的 hitArea 作为“无限画布”
     this.stage.hitArea = new Rectangle(-50000, -50000, 100000, 100000);
 
@@ -50,13 +50,29 @@ export class PixiEngine {
 
   // 屏幕坐标 -> 画布世界坐标
   public screenToWorld(p: Point): Point {
-    if (!this.stage) return p;
-    const s = this.stage.scale;
-    const t = this.stage.position;
+    if (!this.stage) return p.clone();
+
+    const { scale, position } = this.stage;
     return new Point(
-      (p.x - t.x) / s.x,
-      (p.y - t.y) / s.y,
+      (p.x - position.x) / scale.x,
+      (p.y - position.y) / scale.y
     );
+  }
+
+  // 世界坐标 -> 屏幕坐标
+  public worldToScreen(world: Point): Point {
+    if (!this.stage) return world.clone();
+
+    const { scale, position } = this.stage;
+    return new Point(
+      world.x * scale.x + position.x,
+      world.y * scale.y + position.y
+    );
+  }
+
+  // 当前缩放
+  public get zoom(): number {
+    return this.stage?.scale.x ?? 1;
   }
 
   // 以屏幕坐标 (screenX, screenY) 为中心缩放
@@ -76,7 +92,7 @@ export class PixiEngine {
     // 调整平移
     stage.position.set(
       screenPoint.x - worldBefore.x * this._zoom,
-      screenPoint.y - worldBefore.y * this._zoom,
+      screenPoint.y - worldBefore.y * this._zoom
     );
   }
 

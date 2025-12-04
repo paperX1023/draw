@@ -67,8 +67,8 @@
         </div>
         <div class="color-row">
           <label>颜色</label>
-          <input type="color" :value="safeColorToHex(currentElement.style.color)"
-            @input="(e) => handleColorUpdate('color', e.target.value)" />
+          <input type="color" :value="safeColorToHex(currentElement.style.fontColor)"
+            @input="(e) => handleColorUpdate('fontColor', e.target.value)" />
         </div>
         <textarea class="text-content-edit" v-model="currentElement.text" @change="handleUpdate" rows="3"
           placeholder="输入文本内容"></textarea>

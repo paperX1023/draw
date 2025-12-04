@@ -67,8 +67,8 @@
         </div>
         <div class="color-row">
           <label>颜色</label>
-          <input type="color" :value="safeColorToHex(currentElement.style.fontColor)"
-            @input="(e) => handleColorUpdate('fontColor', e.target.value)" />
+          <input type="color" :value="safeColorToHex(currentElement.style.color)"
+            @input="(e) => handleColorUpdate('color', e.target.value)" />
         </div>
         <textarea class="text-content-edit" v-model="currentElement.text" @change="handleUpdate" rows="3"
           placeholder="输入文本内容"></textarea>
@@ -79,7 +79,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useEditorStore } from '@/stores/editorStore';
 import { executeCommand } from '../../core/history/HistoryManager';
 import { UpdateElementCommand } from '../../core/commands/UpdateElementCommand';
@@ -87,6 +87,7 @@ import InputControl from '../base/InputControl.vue';
 
 const store = useEditorStore();
 
+// 获取当前选中元素
 const currentElement = computed(() => {
   return store.selectedElements.length === 1 ? store.selectedElements[0] : null;
 });
@@ -97,6 +98,7 @@ const safeColorToHex = (colorNum) => {
   return '#' + colorNum.toString(16).padStart(6, '0').toUpperCase();
 };
 
+// 更新
 const handleUpdate = () => {
   if (currentElement.value) {
     store.updateElement(currentElement.value.id, { ...currentElement.value });
@@ -109,6 +111,7 @@ const handleStyleUpdate = () => {
   }
 };
 
+// 颜色更新
 const handleColorUpdate = (key, hexString) => {
   if (currentElement.value) {
     const colorNum = parseInt(hexString.slice(1), 16);
@@ -116,8 +119,8 @@ const handleColorUpdate = (key, hexString) => {
 
     const command = new UpdateElementCommand(
       currentElement.value.id,
-      { style: { ...currentElement.value.style, [key]: oldColor } }, // 旧
-      { style: { ...currentElement.value.style, [key]: colorNum } }  // 新
+      { style: { ...currentElement.value.style, [key]: oldColor } },
+      { style: { ...currentElement.value.style, [key]: colorNum } }
     );
     executeCommand(command);
   }
@@ -135,32 +138,49 @@ const clearFill = () => {
   }
 };
 
+
+// 存储拖动前的滤镜
+const filterSnapshot = ref(null);
+
 const handleFilterChange = (key, value) => {
   if (!currentElement.value) return;
+
+  // 如果是第一次触发记录旧值
+  if (!filterSnapshot.value) {
+    filterSnapshot.value = JSON.parse(JSON.stringify(currentElement.value.filters));
+  }
+
   const numValue = Number(value);
   currentElement.value.filters[key] = numValue;
 };
 
+// 拖动结束
 const handleFilterFinish = (key, value) => {
-  if (!currentElement.value) return;
+  if (!currentElement.value || !filterSnapshot.value) return;
+
   const numValue = Number(value);
-  const currentFilters = { ...currentElement.value.filters };
+  const oldFilters = filterSnapshot.value; 
+  const newFilters = { ...currentElement.value.filters, [key]: numValue };
 
   const command = new UpdateElementCommand(
     currentElement.value.id,
-    { filters: { ...currentFilters, [key]: currentFilters[key] } },
-    { filters: { ...currentFilters, [key]: numValue } }
+    { filters: oldFilters },
+    { filters: newFilters }
   );
   executeCommand(command);
+
+  filterSnapshot.value = null;
 };
 
+// 重置滤镜
 const resetFilters = () => {
   if (!currentElement.value) return;
   const defaultFilters = { blur: 0, brightness: 1, contrast: 1 };
+
   const command = new UpdateElementCommand(
     currentElement.value.id,
-    { filters: { ...currentElement.value.filters } },
-    { filters: defaultFilters }
+    { filters: { ...currentElement.value.filters } }, // 旧值
+    { filters: defaultFilters } 
   );
   executeCommand(command);
 };

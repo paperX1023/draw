@@ -11,7 +11,7 @@ export abstract class BaseTool implements ITool {
 
   onActivate() {}
   onDeactivate() {}
-  onPointerDown(e: FederatedPointerEvent) {};
+  onPointerDown(e: FederatedPointerEvent, hitElementId: string | null) {};
   onPointerMove(e: FederatedPointerEvent) {};
   onPointerUp(e: FederatedPointerEvent) {};
 }

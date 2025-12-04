@@ -1,12 +1,13 @@
-import { Application, Container, Rectangle } from 'pixi.js';
+import { Application, Container, Rectangle, Point } from 'pixi.js';
 
 export class PixiEngine {
   private static _instance: PixiEngine;
-  
-  // v8 中 app 可能为 null (初始化前)，或者我们只暴露 stage
+
   public app: Application | null = null;
   public stage: Container | null = null;
+
   private _isInitialized = false;
+  private _zoom = 1;           // 当前缩放
 
   private constructor() {}
 
@@ -17,33 +18,73 @@ export class PixiEngine {
     return this._instance;
   }
 
-  // 异步初始化方法
   public async init(container: HTMLElement) {
     if (this._isInitialized) return;
 
     this.app = new Application();
 
     await this.app.init({
-      backgroundAlpha: 0, // 透明背景
+      backgroundAlpha: 0,
       antialias: true,
       autoDensity: true,
       resolution: window.devicePixelRatio || 1,
-      resizeTo: container 
+      resizeTo: container,
     });
 
     this.stage = this.app.stage;
-    
-    // 配置交互
     this.stage.eventMode = 'static';
-    this.stage.hitArea = new Rectangle(0, 0, 100000, 100000); // 无限画布准备
+    // 很大的 hitArea 作为“无限画布”
+    this.stage.hitArea = new Rectangle(-50000, -50000, 100000, 100000);
 
-    // 挂载 Canvas
+    // 初始缩放 & 平移
+    this.stage.scale.set(1);
+    this.stage.position.set(0, 0);
+
     container.appendChild(this.app.canvas);
     this._isInitialized = true;
   }
 
   public get isReady() {
     return this._isInitialized;
+  }
+
+  // 屏幕坐标 -> 画布世界坐标
+  public screenToWorld(p: Point): Point {
+    if (!this.stage) return p;
+    const s = this.stage.scale;
+    const t = this.stage.position;
+    return new Point(
+      (p.x - t.x) / s.x,
+      (p.y - t.y) / s.y,
+    );
+  }
+
+  // 以屏幕坐标 (screenX, screenY) 为中心缩放
+  public setZoomAt(factor: number, screenX: number, screenY: number) {
+    if (!this.stage) return;
+    const stage = this.stage;
+
+    const screenPoint = new Point(screenX, screenY);
+    // 缩放前鼠标对应的世界坐标
+    const worldBefore = this.screenToWorld(screenPoint);
+
+    // 更新缩放
+    const nextZoom = Math.min(4, Math.max(0.2, this._zoom * factor));
+    this._zoom = nextZoom;
+    stage.scale.set(this._zoom);
+
+    // 调整平移
+    stage.position.set(
+      screenPoint.x - worldBefore.x * this._zoom,
+      screenPoint.y - worldBefore.y * this._zoom,
+    );
+  }
+
+  // 按指定偏移平移画布
+  public panBy(dx: number, dy: number) {
+    if (!this.stage) return;
+    this.stage.position.x += dx;
+    this.stage.position.y += dy;
   }
 
   public destroy() {

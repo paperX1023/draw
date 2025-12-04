@@ -1,4 +1,4 @@
-import { Container, FederatedPointerEvent } from "pixi.js";
+import { Container, FederatedPointerEvent, Point } from "pixi.js";
 import { PixiEngine } from "./PixiEngine";
 import { updateOrCreateShape } from "@/rendering/pixi/ShapeFactory";
 import {
@@ -168,9 +168,12 @@ export class CanvasManager {
 
         const currentTool = this.toolManager.currentTool;
         if (currentTool instanceof SelectTool) {
+          const engine = PixiEngine.getInstance();
+          const worldPos = engine.screenToWorld(e.global.clone());
+
           currentTool.onTransformStart(handleType, {
-            globalX: e.global.x,
-            globalY: e.global.y,
+            globalX: worldPos.x,
+            globalY: worldPos.y,
           });
         }
       }

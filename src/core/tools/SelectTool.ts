@@ -1,9 +1,9 @@
-import { BaseTool } from "./BaseTool";
-import { FederatedPointerEvent, Graphics } from "pixi.js";
-import { executeCommand } from "@/core/history/HistoryManager";
-import { MoveElementCommand } from "@/core/commands/MoveElementCommand";
-import { PixiEngine } from "@/core/render/PixiEngine";
-import type { TransformHandleType } from "@/rendering/pixi/Transformer";
+import { BaseTool } from './BaseTool';
+import { FederatedPointerEvent, Graphics } from 'pixi.js';
+import { executeCommand } from '@/core/history/HistoryManager';
+import { MoveElementCommand } from '@/core/commands/MoveElementCommand';
+import { PixiEngine } from '@/core/render/PixiEngine';
+import type { TransformHandleType } from '@/rendering/pixi/Transformer';
 
 interface IPointData {
   globalX: number;
@@ -21,8 +21,13 @@ interface TransformItemState {
   centerY: number;
 }
 
+function toWorld(e: FederatedPointerEvent) {
+  const engine = PixiEngine.getInstance();
+  return engine.screenToWorld(e.global.clone());
+}
+
 export class SelectTool extends BaseTool {
-  name = "select";
+  name = 'select';
 
   // 拖拽移动
   private isDragging = false;
@@ -54,8 +59,8 @@ export class SelectTool extends BaseTool {
     if (!stage) return;
 
     const g = new Graphics();
-    g.label = "SelectionMarquee";
-    g.eventMode = "none";
+    g.label = 'SelectionMarquee';
+    g.eventMode = 'none';
     g.visible = false;
     stage.addChild(g);
     this.marquee = g;
@@ -77,7 +82,7 @@ export class SelectTool extends BaseTool {
     }
 
     g.rect(x1, y1, w, h);
-    g.fill({ color: 0x007aff, alpha: 0.08 }); // 半透明填充
+    g.fill({ color: 0x007aff, alpha: 0.08 });     // 半透明填充
     g.stroke({ width: 1, color: 0x007aff, alpha: 0.9 }); // 实线边框
     g.visible = true;
   }
@@ -93,18 +98,18 @@ export class SelectTool extends BaseTool {
     const selected = this.store.selectedElements;
     if (!selected || selected.length === 0) return;
 
-    if (handle === "move") {
-      this.isTransforming = false;
-      this.isDragging = true;
-      this.dragStartX = p.globalX;
-      this.dragStartY = p.globalY;
-      this.initialMoveStates = selected.map((el) => ({
-        id: el.id,
-        x: Number(el.x),
-        y: Number(el.y),
-      }));
-      return;
-    }
+    if (handle === 'move') {
+    this.isTransforming = false;             
+    this.isDragging = true;                
+    this.dragStartX = p.globalX;
+    this.dragStartY = p.globalY;
+    this.initialMoveStates = selected.map(el => ({
+      id: el.id,
+      x: Number(el.x),
+      y: Number(el.y),
+    }));
+    return;
+  }
 
     this.isTransforming = true;
     this.transformHandle = handle;
@@ -143,36 +148,29 @@ export class SelectTool extends BaseTool {
       const rot = Number(el.rotation) || 0;
       const cx = x + w / 2;
       const cy = y + h / 2;
-      return {
-        id: el.id,
-        x,
-        y,
-        width: w,
-        height: h,
-        rotation: rot,
-        centerX: cx,
-        centerY: cy,
-      };
+      return { id: el.id, x, y, width: w, height: h, rotation: rot, centerX: cx, centerY: cy };
     });
   }
 
   onPointerDown(e: FederatedPointerEvent, hitElementId: string | null) {
     if (this.isTransforming) return;
 
+    const worldPos = toWorld(e);
+
     // 处理选中 + 准备拖拽
     if (hitElementId) {
       const selected = this.store.selectedElements;
 
-      if (!selected.some((el) => el.id === hitElementId)) {
-        const isMultiple = e.ctrlKey || e.metaKey || e.shiftKey;
-        this.store.selectElement(hitElementId, isMultiple);
-      }
+    if (!selected.some(el => el.id === hitElementId)) {
+      const isMultiple = e.ctrlKey || e.metaKey || e.shiftKey;
+      this.store.selectElement(hitElementId, isMultiple);
+    }
 
       const afterSelect = this.store.selectedElements;
       if (afterSelect.length > 0 && e.button === 0) {
         this.isDragging = true;
-        this.dragStartX = e.global.x;
-        this.dragStartY = e.global.y;
+        this.dragStartX = worldPos.x;
+        this.dragStartY = worldPos.y;
         this.initialMoveStates = afterSelect.map((el) => ({
           id: el.id,
           x: Number(el.x),
@@ -186,10 +184,10 @@ export class SelectTool extends BaseTool {
     if (!hitElementId && e.button === 0) {
       this.ensureMarquee();
       this.isMarqueeSelecting = true;
-      this.marqueeStartX = e.global.x;
-      this.marqueeStartY = e.global.y;
-      this.marqueeEndX = e.global.x;
-      this.marqueeEndY = e.global.y;
+      this.marqueeStartX = worldPos.x;
+      this.marqueeStartY = worldPos.y;
+      this.marqueeEndX = worldPos.x;
+      this.marqueeEndY = worldPos.y;
       this.updateMarqueeVisual();
 
       if (!e.ctrlKey && !e.metaKey) {
@@ -199,19 +197,16 @@ export class SelectTool extends BaseTool {
   }
 
   onPointerMove(e: FederatedPointerEvent) {
-    const currentX = e.global.x;
-    const currentY = e.global.y;
+    const worldPos = toWorld(e);
+    const currentX = worldPos.x;
+    const currentY = worldPos.y;
 
     // 组变形
-    if (
-      this.isTransforming &&
-      this.transformHandle &&
-      this.transformItems.length > 0
-    ) {
+    if (this.isTransforming && this.transformHandle && this.transformItems.length > 0) {
       const handle = this.transformHandle;
 
       // 旋转
-      if (handle === "rotate") {
+      if (handle === 'rotate') {
         const startAngle = Math.atan2(
           this.transformStartY - this.groupCenterY,
           this.transformStartX - this.groupCenterX
@@ -238,11 +233,7 @@ export class SelectTool extends BaseTool {
           const newX = newCx - item.width / 2;
           const newY = newCy - item.height / 2;
 
-          this.store.updateElement(item.id, {
-            x: newX,
-            y: newY,
-            rotation: newRot,
-          });
+          this.store.updateElement(item.id, { x: newX, y: newY, rotation: newRot });
         });
         return;
       }
@@ -254,10 +245,10 @@ export class SelectTool extends BaseTool {
       const ddx = currentX - this.transformStartX;
       const ddy = currentY - this.transformStartY;
 
-      if (handle.includes("r")) scaleX = (init.width + ddx) / init.width;
-      if (handle.includes("l")) scaleX = (init.width - ddx) / init.width;
-      if (handle.includes("b")) scaleY = (init.height + ddy) / init.height;
-      if (handle.includes("t")) scaleY = (init.height - ddy) / init.height;
+      if (handle.includes('r')) scaleX = (init.width + ddx) / init.width;
+      if (handle.includes('l')) scaleX = (init.width - ddx) / init.width;
+      if (handle.includes('b')) scaleY = (init.height + ddy) / init.height;
+      if (handle.includes('t')) scaleY = (init.height - ddy) / init.height;
 
       scaleX = Math.max(scaleX, 0.1);
       scaleY = Math.max(scaleY, 0.1);
@@ -322,7 +313,9 @@ export class SelectTool extends BaseTool {
             toY: current.y,
           };
         })
-        .filter((m) => m && (m.fromX !== m.toX || m.fromY !== m.toY)) as any[];
+        .filter(
+          (m) => m && (m.fromX !== m.toX || m.fromY !== m.toY)
+        ) as any[];
 
       if (moves.length > 0) {
         executeCommand(new MoveElementCommand(moves));
@@ -343,7 +336,8 @@ export class SelectTool extends BaseTool {
         const ex2 = ex1 + Number(el.width);
         const ey2 = ey1 + Number(el.height);
 
-        const intersect = !(ex2 < x1 || ex1 > x2 || ey2 < y1 || ey1 > y2);
+        const intersect =
+          !(ex2 < x1 || ex1 > x2 || ey2 < y1 || ey1 > y2);
         if (intersect) hitIds.push(el.id);
       });
 

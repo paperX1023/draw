@@ -18,66 +18,136 @@ import TextEditorOverlay from '@/components/editor/TextEditorOverlay.vue';
 const canvasContainer = ref<HTMLElement | null>(null);
 const editingId = ref<string | null>(null);
 
-// 初始化核心类
 const engine = PixiEngine.getInstance();
-const manager = new CanvasManager(); 
+const manager = new CanvasManager();
 const store = useEditorStore();
+
+let wheelHandler: ((ev: WheelEvent) => void) | null = null;
+
+// 画布拖动状态
+let isPanning = false;
+let lastPanX = 0;
+let lastPanY = 0;
+let mouseDownHandler: ((ev: MouseEvent) => void) | null = null;
+let mouseMoveHandler: ((ev: MouseEvent) => void) | null = null;
+let mouseUpHandler: ((ev: MouseEvent) => void) | null = null;
 
 const finishEditing = () => {
   editingId.value = null;
-  // 编辑结束，刷新选中框
   manager.updateTransformer(store.selectedElements);
 };
 
 onMounted(async () => {
-  if (canvasContainer.value) {
-    // 初始化引擎
-    await engine.init(canvasContainer.value);
-    
-    // 初始化交互 (所有事件逻辑都在 Manager 里)
-    manager.initInteraction();
+  if (!canvasContainer.value) return;
 
-    // 绑定双击编辑回调 (从 Core 通知 UI)
-    manager.onEditStart = (id: string) => {
-      editingId.value = id;
-    };
-    manager.onEditEnd = () => {
-      finishEditing();
-    };
+  // 初始化引擎
+  await engine.init(canvasContainer.value);
 
-    // 初始数据渲染
-    await store.initFromStorage(); 
-    await nextTick();
-    console.log('🔄 渲染器启动，加载图元:', store.elements.length);
-    
-    // 初始全量渲染
-    store.elements.forEach(el => manager.renderElement(el));
-    
-    // 监听数据变化 (UI -> Core)
-    watch(() => store.elements, (newElements) => {
+  // 初始化交互
+  manager.initInteraction();
+
+  // 双击开始编辑
+  manager.onEditStart = (id: string) => {
+    editingId.value = id;
+  };
+  manager.onEditEnd = () => {
+    finishEditing();
+  };
+
+  // 初始数据渲染
+  await store.initFromStorage();
+  await nextTick();
+
+  store.elements.forEach(el => manager.renderElement(el));
+
+  // elements 变化 -> 渲染 + 垃圾回收 + 更新 transformer
+  watch(
+    () => store.elements,
+    (newElements) => {
       newElements.forEach(el => manager.renderElement(el));
       manager.garbageCollect(newElements);
-      
+
       if (!editingId.value) {
         manager.updateTransformer(store.selectedElements);
       }
-    }, { deep: true });
+    },
+    { deep: true },
+  );
 
-    // 监听选中变化
-    watch(() => store.selectedElements, (newSelected) => {
+  // 滚轮缩放
+  wheelHandler = (ev: WheelEvent) => {
+    ev.preventDefault();
+    const delta = ev.deltaY;
+    const factor = delta > 0 ? 0.9 : 1.1;
+    engine.setZoomAt(factor, ev.clientX, ev.clientY);
+  };
+
+  canvasContainer.value.addEventListener('wheel', wheelHandler, { passive: false });
+
+  // 中键 / Shift+左键 拖动画布
+  mouseDownHandler = (ev: MouseEvent) => {
+    const isMiddle = ev.button === 1;
+    const isShiftLeft = ev.button === 0 && ev.shiftKey;
+    if (!isMiddle && !isShiftLeft) return;
+
+    isPanning = true;
+    lastPanX = ev.clientX;
+    lastPanY = ev.clientY;
+  };
+
+  mouseMoveHandler = (ev: MouseEvent) => {
+    if (!isPanning) return;
+    const dx = ev.clientX - lastPanX;
+    const dy = ev.clientY - lastPanY;
+    lastPanX = ev.clientX;
+    lastPanY = ev.clientY;
+    engine.panBy(dx, dy);
+  };
+
+  mouseUpHandler = () => {
+    isPanning = false;
+  };
+
+  canvasContainer.value.addEventListener('mousedown', mouseDownHandler);
+  window.addEventListener('mousemove', mouseMoveHandler);
+  window.addEventListener('mouseup', mouseUpHandler);
+
+  // 选中变化 -> 更新 transformer
+  watch(
+    () => store.selectedElements,
+    (newSelected) => {
       if (!editingId.value) {
         manager.updateTransformer(newSelected);
       }
-    }, { deep: true });
+    },
+    { deep: true },
+  );
 
-    // 监听工具变化 (连接 ToolManager)
-    watch(() => store.activeTool, (newTool) => {
+  // 工具变化
+  watch(
+    () => store.activeTool,
+    (newTool) => {
       manager.setTool(newTool);
-    }, { immediate: true });
-  }
+    },
+    { immediate: true },
+  );
 });
 
 onUnmounted(() => {
+  if (canvasContainer.value && wheelHandler) {
+    canvasContainer.value.removeEventListener('wheel', wheelHandler);
+    wheelHandler = null;
+  }
+  if (canvasContainer.value && mouseDownHandler) {
+    canvasContainer.value.removeEventListener('mousedown', mouseDownHandler);
+  }
+  if (mouseMoveHandler) {
+    window.removeEventListener('mousemove', mouseMoveHandler);
+  }
+  if (mouseUpHandler) {
+    window.removeEventListener('mouseup', mouseUpHandler);
+  }
+
   engine.destroy();
 });
 </script>

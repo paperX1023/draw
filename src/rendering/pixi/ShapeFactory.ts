@@ -17,7 +17,9 @@ interface ElementData {
     height: number;
     rotation?: number;
     text?: string;
-    src?: string;
+    
+    _runtimeURL?: string; 
+    
     style?: {
         fillColor?: number | null;
         lineColor?: number;
@@ -42,7 +44,7 @@ const drawShapeGeometry = (g: Graphics, elementData: ElementData) => {
     const fillColor = style.fillColor;
 
     g.clear();
-
+    // 定义路径
     switch (type) {
         case 'rect':
             g.rect(0, 0, width, height);
@@ -51,25 +53,24 @@ const drawShapeGeometry = (g: Graphics, elementData: ElementData) => {
             g.ellipse(width / 2, height / 2, width / 2, height / 2);
             break;
         case 'triangle':
-            g.poly([
-                width / 2, 0,
-                0, height,
-                width, height
-            ]);
+            g.poly([width / 2, 0, 0, height, width, height]);
             break;
     }
-
+    
+    // 填充
     if (fillColor !== null && fillColor !== undefined) {
         g.fill({ color: fillColor });
     } else {
         g.fill({ color: 0xFFFFFF, alpha: 0.001 });
     }
 
+    // 描边
     if (lineWidth > 0) {
         g.stroke({ width: lineWidth, color: lineColor });
     }
 };
 
+// 绘制文字
 const updateShapeLabel = (container: Container, elementData: ElementData) => {
     let label = container.getChildByLabel('label') as Text;
 
@@ -95,6 +96,7 @@ const updateShapeLabel = (container: Container, elementData: ElementData) => {
     label.y = elementData.height / 2;
 };
 
+// 滤镜
 const applyFilters = (displayObject: Container, filterData: any) => {
     if (!filterData) {
         displayObject.filters = [];
@@ -113,43 +115,44 @@ const applyFilters = (displayObject: Container, filterData: any) => {
     displayObject.filters = filtersToApply;
 };
 
+// 核心函数
 export const updateOrCreateShape = (
     elementData: ElementData, 
     existingObject?: Container
 ): Container | null => {
     
-    if (elementData.type === 'image' && !elementData.src) {
+    if (elementData.type === 'image' && !elementData._runtimeURL) {
         return null;
     }
 
     let displayObject = existingObject;
 
-    // 创建阶段
+    // 创建
     if (!displayObject) {
         if (elementData.type === 'text') {
              displayObject = new Text({ text: elementData.text || '', style: { fontSize: 24 } });
         } 
         else if (elementData.type === 'image') {
             displayObject = new Container();
+            
             const hitArea = new Graphics();
             hitArea.label = 'hitArea'; 
             displayObject.addChild(hitArea);
-            
-            if (elementData.src) {
-                const texture = Texture.from(elementData.src);
-                const sprite = new Sprite(texture);
-                sprite.label = 'imageContent';
-                displayObject.addChild(sprite);
-            }
+
+            const texture = Texture.from(elementData._runtimeURL!);
+            const sprite = new Sprite(texture);
+            sprite.label = 'imageContent';
+            displayObject.addChild(sprite);
         }
         else {
              displayObject = new Graphics();
         }
+        
         displayObject.eventMode = 'static';
         displayObject.cursor = 'pointer';
     }
 
-    // 更新阶段
+    // 更新
     if (displayObject instanceof Graphics) {
         drawShapeGeometry(displayObject, elementData);
         updateShapeLabel(displayObject, elementData);
@@ -172,14 +175,17 @@ export const updateOrCreateShape = (
         hitArea.fill({ color: 0xFFFFFF, alpha: 0.0001 });
         
         let sprite = displayObject.getChildByLabel('imageContent') as Sprite;
-        if (elementData.src) {
+        
+        if (elementData._runtimeURL) {
             if (!sprite) {
-                const newSprite = new Sprite(Texture.from(elementData.src));
+                const newSprite = new Sprite(Texture.from(elementData._runtimeURL));
                 newSprite.label = 'imageContent';
                 displayObject.addChild(newSprite);
-            } else if (sprite.texture.label !== elementData.src) { 
-                 sprite.texture = Texture.from(elementData.src);
+            } else if (sprite.texture.label !== elementData._runtimeURL) { 
+                 sprite.texture = Texture.from(elementData._runtimeURL);
             }
+            
+            // 确保可见
             if (sprite) {
                 sprite.width = elementData.width;
                 sprite.height = elementData.height;
@@ -188,6 +194,9 @@ export const updateOrCreateShape = (
         } else {
             if (sprite) sprite.visible = false;
         }
+        
+        displayObject.width = elementData.width;
+        displayObject.height = elementData.height;
         applyFilters(displayObject, elementData.filters);
     }
 

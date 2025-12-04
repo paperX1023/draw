@@ -4,7 +4,8 @@ export type TransformHandleType =
   | 'tl' | 't' | 'tr'
   | 'l'  | 'r'
   | 'bl' | 'b' | 'br'
-  | 'rotate';
+  | 'rotate'
+  | 'move';
 
 export interface TransformTargetLike {
   x: number;
@@ -130,6 +131,15 @@ export const drawTransformer = (
   // 虚线边框
   const border = new Graphics();
   drawDashedRect(border, 0, 0, boxW, boxH);
+
+  border.eventMode = 'static';
+  border.cursor = 'move';
+  border.on('pointerdown', (e: FederatedPointerEvent) => {
+    e.stopPropagation();
+    if (onHandleDown) {
+      onHandleDown('move', e);
+    }
+  });
   transformer.addChild(border);
 
   if (!onHandleDown) return;

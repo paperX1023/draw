@@ -40,14 +40,14 @@ export class ToolManager {
     this._currentTool.onActivate();
   }
 
-  public onDown(e: FederatedPointerEvent) {
-    this._currentTool.onPointerDown(e);
+  onDown(e: FederatedPointerEvent, hitElementId: string | null) {
+    this._currentTool?.onPointerDown(e, hitElementId);
   }
 
   public onMove(e: FederatedPointerEvent) {
     this._currentTool.onPointerMove(e);
   }
-  
+
   public onUp(e: FederatedPointerEvent) {
     this._currentTool.onPointerUp(e);
   }

@@ -4,6 +4,10 @@ import { executeCommand } from '@/core/history/HistoryManager';
 import { MoveElementCommand } from '@/core/commands/MoveElementCommand';
 import { PixiEngine } from '@/core/render/PixiEngine';
 import type { TransformHandleType } from '@/rendering/pixi/Transformer';
+import {
+  TransformElementsCommand,
+  type IElementTransformChange,
+} from '@/core/commands/TransformElementsCommand';
 
 interface IPointData {
   globalX: number;
@@ -299,6 +303,52 @@ export class SelectTool extends BaseTool {
   }
 
   onPointerUp(e: FederatedPointerEvent) {
+    // 结束变形
+    if (this.isTransforming && this.transformItems.length > 0) {
+    const changes: IElementTransformChange[] = [];
+
+    this.transformItems.forEach(init => {
+      const current = this.store.elements.find(el => el.id === init.id);
+      if (!current) return;
+
+      const fromState = {
+        x: init.x,
+        y: init.y,
+        width: init.width,
+        height: init.height,
+        rotation: init.rotation,
+      };
+
+      const toState = {
+        x: Number(current.x),
+        y: Number(current.y),
+        width: Number(current.width),
+        height: Number(current.height),
+        rotation: Number(current.rotation) || 0,
+      };
+
+      // 如果有变化才记录
+      const changed =
+        fromState.x !== toState.x ||
+        fromState.y !== toState.y ||
+        fromState.width !== toState.width ||
+        fromState.height !== toState.height ||
+        fromState.rotation !== toState.rotation;
+
+      if (changed) {
+        changes.push({
+          id: init.id,
+          from: fromState,
+          to: toState,
+        });
+      }
+    });
+
+    if (changes.length > 0) {
+      executeCommand(new TransformElementsCommand(changes));
+    }
+  }
+
     // 结束拖拽
     if (this.isDragging && this.initialMoveStates.length > 0) {
       const moves = this.initialMoveStates

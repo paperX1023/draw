@@ -19,6 +19,9 @@ import EditorHeader from '../components/layout/EditorHeader.vue';
 import ToolboxPanel from '../components/layout/ToolboxPanel.vue';
 import PropertyPanel from '../components/layout/PropertyPanel.vue';
 import CanvasRenderer from '../rendering/vue/CanvasRenderer.vue';
+
+import { useKeyboard } from '../composables/useKeyboard';
+useKeyboard();
 </script>
 
 <style scoped>
@@ -52,7 +55,6 @@ import CanvasRenderer from '../rendering/vue/CanvasRenderer.vue';
   z-index: 0;
   background-color: #f3f4f6; /* 画布背景 */
 
-  /* ✨ 核心美化：CSS 点阵网格背景 */
   background-image: radial-gradient(#cfd8dc 1.5px, transparent 1.5px);
   background-size: 24px 24px; /* 网格间距 */
   box-shadow: inset 0 0 40px rgba(0,0,0,0.02);

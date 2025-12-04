@@ -15,7 +15,7 @@ export class DrawTool extends BaseTool {
     this.name = toolName;
   }
 
-  onPointerDown(e: FederatedPointerEvent) {
+  onPointerDown(e: FederatedPointerEvent, hitElementId: string | null) {
     this.startX = e.global.x;
     this.startY = e.global.y;
 

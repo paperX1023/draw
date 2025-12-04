@@ -1,15 +1,15 @@
-import { Container, FederatedPointerEvent } from 'pixi.js';
-import { PixiEngine } from './PixiEngine';
-import { updateOrCreateShape } from '@/rendering/pixi/ShapeFactory';
+import { Container, FederatedPointerEvent } from "pixi.js";
+import { PixiEngine } from "./PixiEngine";
+import { updateOrCreateShape } from "@/rendering/pixi/ShapeFactory";
 import {
   getTransformer,
   drawTransformer,
   type TransformHandleType,
   type TransformTargetLike,
-} from '@/rendering/pixi/Transformer';
-import { useEditorStore } from '@/stores/editorStore';
-import { ToolManager } from '@/core/tools/ToolManager';
-import { SelectTool } from '@/core/tools/SelectTool';
+} from "@/rendering/pixi/Transformer";
+import { useEditorStore } from "@/stores/editorStore";
+import { ToolManager } from "@/core/tools/ToolManager";
+import { SelectTool } from "@/core/tools/SelectTool";
 
 interface IElementData {
   id: string;
@@ -48,23 +48,20 @@ export class CanvasManager {
 
     const store = this.store;
 
-    stage.on('pointerdown', (e: FederatedPointerEvent) => {
-      if (e.target === stage) {
-        store.selectElement(null);
-      }
-
-      this.toolManager.onDown(e);
+    stage.on("pointerdown", (e: FederatedPointerEvent) => {
+      this.onEditEnd();
+      this.toolManager.onDown(e, null);
     });
 
-    stage.on('pointermove', (e: FederatedPointerEvent) => {
+    stage.on("pointermove", (e: FederatedPointerEvent) => {
       this.toolManager.onMove(e);
     });
 
-    stage.on('pointerup', (e: FederatedPointerEvent) => {
+    stage.on("pointerup", (e: FederatedPointerEvent) => {
       this.toolManager.onUp(e);
     });
 
-    stage.on('pointerupoutside', (e: FederatedPointerEvent) => {
+    stage.on("pointerupoutside", (e: FederatedPointerEvent) => {
       this.toolManager.onUp(e);
     });
 
@@ -78,7 +75,10 @@ export class CanvasManager {
 
     let displayObject = this.pixiObjectMap.get(elementData.id);
 
-    const newDisplayObject = updateOrCreateShape(elementData as any, displayObject);
+    const newDisplayObject = updateOrCreateShape(
+      elementData as any,
+      displayObject
+    );
 
     if (!newDisplayObject) {
       if (displayObject) {
@@ -95,16 +95,16 @@ export class CanvasManager {
       this.pixiObjectMap.set(elementData.id, displayObject);
       stage.addChild(displayObject);
 
-      displayObject.eventMode = 'static';
-      displayObject.cursor = 'pointer';
+      displayObject.eventMode = "static";
+      displayObject.cursor = "pointer";
 
       // 单击选中 + 工具交互
-      displayObject.on('pointerdown', (e: FederatedPointerEvent) => {
+      displayObject.on("pointerdown", (e: FederatedPointerEvent) => {
         this.handleElementDown(elementData.id, e);
       });
 
       // 判断是否双击
-      displayObject.on('pointertap', (e: FederatedPointerEvent) => {
+      displayObject.on("pointertap", (e: FederatedPointerEvent) => {
         this.handleElementTap(elementData.id, e);
       });
     }
@@ -117,7 +117,7 @@ export class CanvasManager {
     const isMultiple = e.ctrlKey || e.metaKey;
     this.store.selectElement(elementId, isMultiple);
 
-    this.toolManager.onDown(e);
+    this.toolManager.onDown(e, elementId);
   }
 
   private handleElementTap(elementId: string, e: FederatedPointerEvent) {
@@ -126,7 +126,7 @@ export class CanvasManager {
     const detail = (e as any).detail ?? 1;
 
     if (detail >= 2) {
-      console.log('[CanvasManager] double tap -> edit start', elementId);
+      console.log("[CanvasManager] double tap -> edit start", elementId);
       this.onEditStart(elementId);
       drawTransformer([], null);
     }
@@ -161,16 +161,19 @@ export class CanvasManager {
       rotation: Number(el.rotation) || 0,
     }));
 
-    drawTransformer(targets, (handleType: TransformHandleType, e: FederatedPointerEvent) => {
-      e.stopPropagation();
+    drawTransformer(
+      targets,
+      (handleType: TransformHandleType, e: FederatedPointerEvent) => {
+        e.stopPropagation();
 
-      const currentTool = this.toolManager.currentTool;
-      if (currentTool instanceof SelectTool) {
-        currentTool.onTransformStart(handleType, {
-          globalX: e.global.x,
-          globalY: e.global.y,
-        });
+        const currentTool = this.toolManager.currentTool;
+        if (currentTool instanceof SelectTool) {
+          currentTool.onTransformStart(handleType, {
+            globalX: e.global.x,
+            globalY: e.global.y,
+          });
+        }
       }
-    });
+    );
   }
 }

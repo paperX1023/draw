@@ -1,22 +1,25 @@
 import { defineStore } from 'pinia';
 import { ref, computed, watch } from 'vue';
-import { AssetManager } from '@/core/storage/AssetManager'; 
+import { AssetManager } from '@/core/storage/AssetManager';
 import { createElement } from '@/core/models/ElementModel';
 import type { IElement, ElementType, IElementStyle } from '@/types/elements';
 
 const STORAGE_KEY = 'my-editor-data';
 const DEFAULT_FILTERS = { blur: 0, brightness: 1, contrast: 1 };
 
-const generateId = () => 'el-' + Date.now() + Math.random().toString(36).slice(2, 6);
+const generateId = () =>
+  'el-' + Date.now() + Math.random().toString(36).slice(2, 6);
 
 export const useEditorStore = defineStore('editor', () => {
   const elements = ref<IElement[]>([]);
   const selectedElementIds = ref<string[]>([]);
   const activeTool = ref<string>('select');
 
-  const selectedElements = computed(() => 
-    elements.value.filter(el => selectedElementIds.value.includes(el.id))
+  const selectedElements = computed(() =>
+    elements.value.filter((el) => selectedElementIds.value.includes(el.id))
   );
+
+  const clipboard = ref<IElement[] | null>(null);
 
   // 从 LocalStorage 读取
   const initFromStorage = async () => {
@@ -25,9 +28,8 @@ export const useEditorStore = defineStore('editor', () => {
       const parsedElements = JSON.parse(data);
 
       for (const el of parsedElements) {
-        // 如果是图片且有 Key，去 IndexedDB 取数据
         if (el.type === 'image' && el.imageKey) {
-          const url = await AssetManager.getImageUrl(el.imageKey); 
+          const url = await AssetManager.getRuntimeURL(el.imageKey);
           if (url) el._runtimeURL = url;
         }
       }
@@ -44,16 +46,20 @@ export const useEditorStore = defineStore('editor', () => {
     // 获取尺寸
     const img = new Image();
     img.src = runtimeUrl;
-    await new Promise(r => img.onload = r);
+    await new Promise((r) => (img.onload = r));
 
     // 创建数据
-    createNewElementAt('image', window.innerWidth/2 - 100, window.innerHeight/2 - 100, {
+    createNewElementAt(
+      'image',
+      window.innerWidth / 2 - 100,
+      window.innerHeight / 2 - 100,
+      {
         width: img.width / 2,
         height: img.height / 2,
         imageKey: imageKey,
         _runtimeURL: runtimeUrl,
-        src: ''
-    });
+      }
+    );
   };
 
   // 选中逻辑
@@ -78,12 +84,17 @@ export const useEditorStore = defineStore('editor', () => {
   };
 
   // 创建新元素
-  const createNewElementAt = (type: ElementType, x: number, y: number, extraData: any = {}) => {
+  const createNewElementAt = (
+    type: ElementType,
+    x: number,
+    y: number,
+    extraData: any = {}
+  ) => {
     const newElement = createElement({
-        type, 
-        x, 
-        y, 
-        ...extraData // 透传 width, height, src, imageKey 等
+      type,
+      x,
+      y,
+      ...extraData,
     });
 
     elements.value.push(newElement);
@@ -92,29 +103,33 @@ export const useEditorStore = defineStore('editor', () => {
 
   // 更新元素
   const updateElement = (id: string, updates: Partial<IElement>) => {
-    const el = elements.value.find(e => e.id === id);
+    const el = elements.value.find((e) => e.id === id);
     if (!el) return;
 
     if (updates.style) {
-        el.style = { ...el.style, ...updates.style };
-        const { style, ...rest } = updates;
-        Object.assign(el, rest);
+      el.style = { ...el.style, ...updates.style };
+      const { style, ...rest } = updates;
+      Object.assign(el, rest);
     } else if (updates.filters) {
-        el.filters = { ...el.filters, ...updates.filters };
-        const { filters, ...rest } = updates;
-        Object.assign(el, rest);
+      el.filters = { ...el.filters, ...updates.filters };
+      const { filters, ...rest } = updates;
+      Object.assign(el, rest);
     } else {
-        Object.assign(el, updates);
+      Object.assign(el, updates);
     }
   };
 
-  watch(elements, (newVal) => {
-    const json = JSON.stringify(newVal, (key, value) => {
-      if (key === '_runtimeURL') return undefined;
-      return value;
-    });
-    localStorage.setItem(STORAGE_KEY, json);
-  }, { deep: true });
+  watch(
+    elements,
+    (newVal) => {
+      const json = JSON.stringify(newVal, (key, value) => {
+        if (key === '_runtimeURL') return undefined;
+        return value;
+      });
+      localStorage.setItem(STORAGE_KEY, json);
+    },
+    { deep: true }
+  );
 
   return {
     elements,
@@ -126,6 +141,6 @@ export const useEditorStore = defineStore('editor', () => {
     setActiveTool,
     createNewElementAt,
     updateElement,
-    addImageToCanvas 
+    addImageToCanvas,
   };
 });

@@ -7,11 +7,6 @@
     </div>
 
     <div v-else class="controls">
-      <div class="section-header">
-        <strong>元素 ID:</strong>
-        <span class="id-text">{{ currentElement.id.slice(-6) }}</span>
-      </div>
-
       <div class="control-group">
         <h5>位置与尺寸</h5>
         <div class="grid-2">
@@ -116,12 +111,13 @@ const handleStyleUpdate = () => {
 
 const handleColorUpdate = (key, hexString) => {
   if (currentElement.value) {
+    const colorNum = parseInt(hexString.slice(1), 16);
     const oldColor = currentElement.value.style[key];
 
     const command = new UpdateElementCommand(
       currentElement.value.id,
       { style: { ...currentElement.value.style, [key]: oldColor } }, // 旧
-      { style: { ...currentElement.value.style, [key]: newColor } }  // 新
+      { style: { ...currentElement.value.style, [key]: colorNum } }  // 新
     );
     executeCommand(command);
   }

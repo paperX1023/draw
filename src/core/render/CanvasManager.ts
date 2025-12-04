@@ -1,63 +1,73 @@
 import { Container, FederatedPointerEvent } from 'pixi.js';
-import { PixiEngine } from './PixiEngine'; 
+import { PixiEngine } from './PixiEngine';
 import { updateOrCreateShape } from '@/rendering/pixi/ShapeFactory';
-import { getTransformer, drawTransformer, type TransformHandleType } from '@/rendering/pixi/Transformer';
-import { useInteraction, type IInteractionPayload } from '@/composables/useInteraction';
+import {
+  getTransformer,
+  drawTransformer,
+  type TransformHandleType,
+  type TransformTargetLike,
+} from '@/rendering/pixi/Transformer';
 import { useEditorStore } from '@/stores/editorStore';
+import { ToolManager } from '@/core/tools/ToolManager';
+import { SelectTool } from '@/core/tools/SelectTool';
 
 interface IElementData {
   id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation?: number;
   [key: string]: any;
 }
 
 export class CanvasManager {
   private engine: PixiEngine;
+  private toolManager: ToolManager;
   private pixiObjectMap = new Map<string, Container>();
-  
-  // 双击检测状态
-  private lastClickTime = 0;
-  private lastClickId: string | null = null;
 
-  // 回调函数：通知 Vue 组件显示/隐藏编辑器
+  private store = useEditorStore();
+
+  // 回调函数
   public onEditStart: (id: string) => void = () => {};
   public onEditEnd: () => void = () => {};
 
   constructor() {
     this.engine = PixiEngine.getInstance();
+    this.toolManager = new ToolManager();
+  }
+
+  public setTool(toolName: string) {
+    this.toolManager.setTool(toolName);
   }
 
   // 初始化交互事件
   public initInteraction() {
     const stage = this.engine.stage;
-    
-    if (!stage) {
-      console.error('PixiJS v8 Stage not initialized yet.');
-      return;
-    }
+    if (!stage) return;
 
-    const { handlePointerDown, handlePointerMove, handlePointerUp } = useInteraction();
-    const store = useEditorStore();
+    const store = this.store;
 
-    // 点击
     stage.on('pointerdown', (e: FederatedPointerEvent) => {
-      // 如果正在编辑，点击背景关闭编辑
-      this.onEditEnd();
-      
-      store.selectElement(null); 
-      
-      const payload: IInteractionPayload = { globalX: e.global.x, globalY: e.global.y };
-      handlePointerDown(payload, null);
+      if (e.target === stage) {
+        store.selectElement(null);
+      }
+
+      this.toolManager.onDown(e);
     });
 
     stage.on('pointermove', (e: FederatedPointerEvent) => {
-        const payload: IInteractionPayload = { globalX: e.global.x, globalY: e.global.y };
-        handlePointerMove(payload);
+      this.toolManager.onMove(e);
     });
-    
-    stage.on('pointerup', handlePointerUp);
-    stage.on('pointerupoutside', handlePointerUp);
 
-    // 初始化 Transformer
+    stage.on('pointerup', (e: FederatedPointerEvent) => {
+      this.toolManager.onUp(e);
+    });
+
+    stage.on('pointerupoutside', (e: FederatedPointerEvent) => {
+      this.toolManager.onUp(e);
+    });
+
     getTransformer(stage);
   }
 
@@ -67,7 +77,7 @@ export class CanvasManager {
     if (!stage) return;
 
     let displayObject = this.pixiObjectMap.get(elementData.id);
-    
+
     const newDisplayObject = updateOrCreateShape(elementData as any, displayObject);
 
     if (!newDisplayObject) {
@@ -85,38 +95,41 @@ export class CanvasManager {
       this.pixiObjectMap.set(elementData.id, displayObject);
       stage.addChild(displayObject);
 
+      displayObject.eventMode = 'static';
+      displayObject.cursor = 'pointer';
+
+      // 单击选中 + 工具交互
       displayObject.on('pointerdown', (e: FederatedPointerEvent) => {
-        this.handleElementClick(elementData.id, e);
+        this.handleElementDown(elementData.id, e);
+      });
+
+      // 判断是否双击
+      displayObject.on('pointertap', (e: FederatedPointerEvent) => {
+        this.handleElementTap(elementData.id, e);
       });
     }
   }
 
-  // 核心点击逻辑
-  private handleElementClick(elementId: string, e: FederatedPointerEvent) {
+  // 单击：选中 + 交给工具
+  private handleElementDown(elementId: string, e: FederatedPointerEvent) {
     e.stopPropagation();
-    
-    const store = useEditorStore(); // 🟢 获取 Store
-    const { handlePointerDown } = useInteraction();
 
-    const now = Date.now();
-    const diff = now - this.lastClickTime;
+    const isMultiple = e.ctrlKey || e.metaKey;
+    this.store.selectElement(elementId, isMultiple);
 
-    if (this.lastClickId === elementId && diff < 300) {
-      // 双击
+    this.toolManager.onDown(e);
+  }
+
+  private handleElementTap(elementId: string, e: FederatedPointerEvent) {
+    e.stopPropagation();
+
+    const detail = (e as any).detail ?? 1;
+
+    if (detail >= 2) {
+      console.log('[CanvasManager] double tap -> edit start', elementId);
       this.onEditStart(elementId);
-      drawTransformer([], null); 
-    } else {
-      // 单击
-      const isMultiple = e.ctrlKey || e.metaKey; 
-      
-      store.selectElement(elementId, isMultiple); 
-      
-      const payload: IInteractionPayload = { globalX: e.global.x, globalY: e.global.y };
-      handlePointerDown(payload, elementId);
+      drawTransformer([], null);
     }
-
-    this.lastClickTime = now;
-    this.lastClickId = elementId;
   }
 
   // 垃圾回收
@@ -124,8 +137,7 @@ export class CanvasManager {
     const stage = this.engine.stage;
     if (!stage) return;
 
-    const validIds = new Set(currentElements.map(e => e.id));
-    
+    const validIds = new Set(currentElements.map((e) => e.id));
     for (const [id, displayObject] of this.pixiObjectMap.entries()) {
       if (!validIds.has(id)) {
         stage.removeChild(displayObject);
@@ -135,20 +147,30 @@ export class CanvasManager {
     }
   }
 
-  // 更新 Transformer
-  public updateTransformer(selectedElements: any[]) {
-    const { handleTransformStart } = useInteraction();
-    
+  public updateTransformer(selectedElements: IElementData[]) {
     if (!selectedElements || selectedElements.length === 0) {
       drawTransformer([], null);
       return;
     }
 
-    drawTransformer(selectedElements, (handleType: TransformHandleType, e: FederatedPointerEvent) => {
-      e.stopPropagation(); 
-      
-      const payload: IInteractionPayload = { globalX: e.global.x, globalY: e.global.y };
-      handleTransformStart(handleType, payload);
+    const targets: TransformTargetLike[] = selectedElements.map((el) => ({
+      x: Number(el.x) || 0,
+      y: Number(el.y) || 0,
+      width: Number(el.width) || 0,
+      height: Number(el.height) || 0,
+      rotation: Number(el.rotation) || 0,
+    }));
+
+    drawTransformer(targets, (handleType: TransformHandleType, e: FederatedPointerEvent) => {
+      e.stopPropagation();
+
+      const currentTool = this.toolManager.currentTool;
+      if (currentTool instanceof SelectTool) {
+        currentTool.onTransformStart(handleType, {
+          globalX: e.global.x,
+          globalY: e.global.y,
+        });
+      }
     });
   }
 }

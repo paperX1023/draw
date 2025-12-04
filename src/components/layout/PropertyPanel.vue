@@ -10,10 +10,26 @@
       <div class="control-group">
         <h5>位置与尺寸</h5>
         <div class="grid-2">
-          <InputControl label="X" v-model.number="currentElement.x" @change="handleUpdate" />
-          <InputControl label="Y" v-model.number="currentElement.y" @change="handleUpdate" />
-          <InputControl label="W" v-model.number="currentElement.width" @change="handleUpdate" />
-          <InputControl label="H" v-model.number="currentElement.height" @change="handleUpdate" />
+          <InputControl
+            label="X"
+            :modelValue="currentElement.x"
+            @update:modelValue="(val) => handleNumericPropChange('x', val)"
+          />
+          <InputControl
+            label="Y"
+            :modelValue="currentElement.y"
+            @update:modelValue="(val) => handleNumericPropChange('y', val)"
+          />
+          <InputControl
+            label="W"
+            :modelValue="currentElement.width"
+            @update:modelValue="(val) => handleNumericPropChange('width', val)"
+          />
+          <InputControl
+            label="H"
+            :modelValue="currentElement.height"
+            @update:modelValue="(val) => handleNumericPropChange('height', val)"
+          />
         </div>
       </div>
 
@@ -21,21 +37,39 @@
         <h5>图像滤镜</h5>
         <div class="slider-row">
           <label>模糊: {{ currentElement.filters.blur }}px</label>
-          <input type="range" min="0" max="20" step="0.5" :value="currentElement.filters.blur"
+          <input
+            type="range"
+            min="0"
+            max="20"
+            step="0.5"
+            :value="currentElement.filters.blur"
             @input="(e) => handleFilterChange('blur', e.target.value)"
-            @change="(e) => handleFilterFinish('blur', e.target.value)" />
+            @change="(e) => handleFilterFinish('blur', e.target.value)"
+          />
         </div>
         <div class="slider-row">
           <label>亮度: {{ Math.round(currentElement.filters.brightness * 100) }}%</label>
-          <input type="range" min="0" max="2" step="0.05" :value="currentElement.filters.brightness"
+          <input
+            type="range"
+            min="0"
+            max="2"
+            step="0.05"
+            :value="currentElement.filters.brightness"
             @input="(e) => handleFilterChange('brightness', e.target.value)"
-            @change="(e) => handleFilterFinish('brightness', e.target.value)" />
+            @change="(e) => handleFilterFinish('brightness', e.target.value)"
+          />
         </div>
         <div class="slider-row">
           <label>对比度: {{ Math.round(currentElement.filters.contrast * 100) }}%</label>
-          <input type="range" min="0" max="3" step="0.05" :value="currentElement.filters.contrast"
+          <input
+            type="range"
+            min="0"
+            max="3"
+            step="0.05"
+            :value="currentElement.filters.contrast"
             @input="(e) => handleFilterChange('contrast', e.target.value)"
-            @change="(e) => handleFilterFinish('contrast', e.target.value)" />
+            @change="(e) => handleFilterFinish('contrast', e.target.value)"
+          />
         </div>
         <div style="text-align: right; margin-top: 8px;">
           <button class="mini-btn" @click="resetFilters">重置滤镜</button>
@@ -47,33 +81,57 @@
         <div class="color-row">
           <label>填充</label>
           <div class="color-wrapper">
-            <input type="color" :value="safeColorToHex(currentElement.style.fillColor)"
-              @input="(e) => handleColorUpdate('fillColor', e.target.value)" />
+            <input
+              type="color"
+              :value="safeColorToHex(currentElement.style.fillColor)"
+              @input="(e) => handleColorUpdate('fillColor', e.target.value)"
+            />
             <button @click="clearFill" class="mini-btn" title="无填充">🚫</button>
           </div>
         </div>
         <div class="color-row">
           <label>边框</label>
-          <input type="color" :value="safeColorToHex(currentElement.style.lineColor)"
-            @input="(e) => handleColorUpdate('lineColor', e.target.value)" />
+          <input
+            type="color"
+            :value="safeColorToHex(currentElement.style.lineColor)"
+            @input="(e) => handleColorUpdate('lineColor', e.target.value)"
+          />
         </div>
-        <InputControl label="线宽" v-model.number="currentElement.style.lineWidth" @change="handleStyleUpdate" />
+        <InputControl
+          label="线宽"
+          :modelValue="currentElement.style.lineWidth"
+          @update:modelValue="(val) => handleStylePropChange('lineWidth', val)"
+        />
       </div>
 
-      <div v-if="currentElement.type === 'text' || currentElement.text" class="control-group">
+      <div
+        v-if="currentElement.type === 'text' || currentElement.text"
+        class="control-group"
+      >
         <h5>文本</h5>
         <div class="grid-2">
-          <InputControl label="字号" v-model.number="currentElement.style.fontSize" @change="handleStyleUpdate" />
+          <InputControl
+            label="字号"
+            :modelValue="currentElement.style.fontSize"
+            @update:modelValue="(val) => handleStylePropChange('fontSize', val)"
+          />
         </div>
         <div class="color-row">
           <label>颜色</label>
-          <input type="color" :value="safeColorToHex(currentElement.style.color)"
-            @input="(e) => handleColorUpdate('color', e.target.value)" />
+          <input
+            type="color"
+            :value="safeColorToHex(currentElement.style.fontColor)"
+            @input="(e) => handleColorUpdate('fontColor', e.target.value)"
+          />
         </div>
-        <textarea class="text-content-edit" v-model="currentElement.text" @change="handleUpdate" rows="3"
-          placeholder="输入文本内容"></textarea>
+        <textarea
+          class="text-content-edit"
+          :value="currentElement.text || ''"
+          @input="(e) => handleTextChange(e.target.value)"
+          rows="3"
+          placeholder="输入文本内容"
+        ></textarea>
       </div>
-
     </div>
   </div>
 </template>
@@ -87,7 +145,7 @@ import InputControl from '../base/InputControl.vue';
 
 const store = useEditorStore();
 
-// 获取当前选中元素
+// 当前选中元素
 const currentElement = computed(() => {
   return store.selectedElements.length === 1 ? store.selectedElements[0] : null;
 });
@@ -98,76 +156,113 @@ const safeColorToHex = (colorNum) => {
   return '#' + colorNum.toString(16).padStart(6, '0').toUpperCase();
 };
 
-// 更新
-const handleUpdate = () => {
-  if (currentElement.value) {
-    store.updateElement(currentElement.value.id, { ...currentElement.value });
-  }
+// 创建并执行更新命令
+const applyUpdateCommand = (elementId, oldPatch, newPatch) => {
+  const command = new UpdateElementCommand(elementId, oldPatch, newPatch);
+  executeCommand(command);
 };
 
-const handleStyleUpdate = () => {
-  if (currentElement.value) {
-    store.updateElement(currentElement.value.id, { style: { ...currentElement.value.style } });
-  }
+const handleNumericPropChange = (key, value) => {
+  if (!currentElement.value) return;
+
+  const el = currentElement.value;
+  const newVal = Number(value);
+
+  if (Number.isNaN(newVal)) return;
+
+  const oldPatch = { [key]: el[key] };
+  const newPatch = { [key]: newVal };
+
+  applyUpdateCommand(el.id, oldPatch, newPatch);
 };
 
-// 颜色更新
+
+const handleTextChange = (text) => {
+  if (!currentElement.value) return;
+
+  const el = currentElement.value;
+  const oldPatch = { text: el.text };
+  const newPatch = { text };
+
+  applyUpdateCommand(el.id, oldPatch, newPatch);
+};
+
+const handleStylePropChange = (key, value) => {
+  if (!currentElement.value) return;
+
+  const el = currentElement.value;
+  const numKeys = ['lineWidth', 'fontSize'];
+  const finalValue = numKeys.includes(key) ? Number(value) : value;
+
+  if (numKeys.includes(key) && Number.isNaN(finalValue)) return;
+
+  const oldStyle = { ...el.style };
+  const newStyle = { ...el.style, [key]: finalValue };
+
+  applyUpdateCommand(el.id, { style: oldStyle }, { style: newStyle });
+};
+
 const handleColorUpdate = (key, hexString) => {
-  if (currentElement.value) {
-    const colorNum = parseInt(hexString.slice(1), 16);
-    const oldColor = currentElement.value.style[key];
+  if (!currentElement.value) return;
 
-    const command = new UpdateElementCommand(
-      currentElement.value.id,
-      { style: { ...currentElement.value.style, [key]: oldColor } },
-      { style: { ...currentElement.value.style, [key]: colorNum } }
-    );
-    executeCommand(command);
-  }
+  const el = currentElement.value;
+  const colorNum = parseInt(hexString.slice(1), 16);
+
+  const oldStyle = { ...el.style };
+  const newStyle = { ...el.style, [key]: colorNum };
+
+  applyUpdateCommand(el.id, { style: oldStyle }, { style: newStyle });
 };
 
 const clearFill = () => {
-  if (currentElement.value) {
-    const oldFill = currentElement.value.style.fillColor;
-    const command = new UpdateElementCommand(
-      currentElement.value.id,
-      { style: { ...currentElement.value.style, fillColor: oldFill } },
-      { style: { ...currentElement.value.style, fillColor: null } }
-    );
-    executeCommand(command);
-  }
+  if (!currentElement.value) return;
+
+  const el = currentElement.value;
+  const oldStyle = { ...el.style };
+  const newStyle = { ...el.style, fillColor: null };
+
+  applyUpdateCommand(el.id, { style: oldStyle }, { style: newStyle });
 };
 
-
-// 存储拖动前的滤镜
+// 记录拖动开始前的滤镜旧值
 const filterSnapshot = ref(null);
 
 const handleFilterChange = (key, value) => {
   if (!currentElement.value) return;
 
-  // 如果是第一次触发记录旧值
+  const el = currentElement.value;
+
+  // 首次拖动时记录旧值
   if (!filterSnapshot.value) {
-    filterSnapshot.value = JSON.parse(JSON.stringify(currentElement.value.filters));
+    filterSnapshot.value = { ...el.filters };
   }
 
   const numValue = Number(value);
-  currentElement.value.filters[key] = numValue;
+  if (Number.isNaN(numValue)) return;
+
+  const newFilters = {
+    ...el.filters,
+    [key]: numValue,
+  };
+
+  store.updateElement(el.id, { filters: newFilters });
 };
 
-// 拖动结束
+// 拖动结束，写入历史
 const handleFilterFinish = (key, value) => {
   if (!currentElement.value || !filterSnapshot.value) return;
 
+  const el = currentElement.value;
   const numValue = Number(value);
-  const oldFilters = filterSnapshot.value; 
-  const newFilters = { ...currentElement.value.filters, [key]: numValue };
+  if (Number.isNaN(numValue)) return;
 
-  const command = new UpdateElementCommand(
-    currentElement.value.id,
-    { filters: oldFilters },
-    { filters: newFilters }
-  );
-  executeCommand(command);
+  const oldFilters = filterSnapshot.value;
+  const newFilters = {
+    ...el.filters,
+    [key]: numValue,
+  };
+
+  applyUpdateCommand(el.id, { filters: oldFilters }, { filters: newFilters });
 
   filterSnapshot.value = null;
 };
@@ -175,14 +270,12 @@ const handleFilterFinish = (key, value) => {
 // 重置滤镜
 const resetFilters = () => {
   if (!currentElement.value) return;
+
+  const el = currentElement.value;
+  const oldFilters = { ...el.filters };
   const defaultFilters = { blur: 0, brightness: 1, contrast: 1 };
 
-  const command = new UpdateElementCommand(
-    currentElement.value.id,
-    { filters: { ...currentElement.value.filters } }, // 旧值
-    { filters: defaultFilters } 
-  );
-  executeCommand(command);
+  applyUpdateCommand(el.id, { filters: oldFilters }, { filters: defaultFilters });
 };
 </script>
 
@@ -268,7 +361,7 @@ h5 {
   color: #666;
 }
 
-.slider-row input[type=range] {
+.slider-row input[type='range'] {
   width: 100%;
   display: block;
 }

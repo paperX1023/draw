@@ -7,16 +7,22 @@
 
     <div class="center-controls">
       <button @click="undo" :disabled="!canUndoState" class="icon-btn" title="撤销">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h10a8 8 0 0 1 8 8v2M3 10l6 6M3 10l6-6"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 10h10a8 8 0 0 1 8 8v2M3 10l6 6M3 10l6-6" />
+        </svg>
       </button>
       <button @click="redo" :disabled="!canRedoState" class="icon-btn" title="重做">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10H11a8 8 0 0 0-8 8v2M21 10l-6 6M21 10l-6-6"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 10H11a8 8 0 0 0-8 8v2M21 10l-6 6M21 10l-6-6" />
+        </svg>
       </button>
     </div>
 
-<!--    <div class="right-section">-->
-<!--      <button class="primary-btn">导出</button>-->
-<!--    </div>-->
+    <!--    <div class="right-section">-->
+    <!--      <button class="primary-btn">导出</button>-->
+    <!--    </div>-->
   </header>
 </template>
 
@@ -50,14 +56,23 @@ onUnmounted(() => { if (unsubscribe) unsubscribe(); });
   background: #fff;
 }
 
-.left-section, .right-section, .center-controls {
+.left-section,
+.right-section,
+.center-controls {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.file-name { font-weight: 500; font-size: 14px; }
-.menu-btn { cursor: pointer; padding: 4px; }
+.file-name {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.menu-btn {
+  cursor: pointer;
+  padding: 4px;
+}
 
 .center-controls {
   position: absolute;
@@ -77,8 +92,16 @@ onUnmounted(() => { if (unsubscribe) unsubscribe(); });
   align-items: center;
   justify-content: center;
 }
-.icon-btn:hover:not(:disabled) { background: #f3f4f6; color: #000; }
-.icon-btn:disabled { opacity: 0.3; cursor: default; }
+
+.icon-btn:hover:not(:disabled) {
+  background: #f3f4f6;
+  color: #000;
+}
+
+.icon-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
 
 .primary-btn {
   background: #000;

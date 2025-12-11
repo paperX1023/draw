@@ -41,7 +41,6 @@ export const createElement = (payload: CreateElementPayload): IElement => {
           width = 200;
           height = 200;
       } else {
-          // 矩形、圆形、三角形：初始给极小值，等待 DrawTool 拖拽拉伸
           width = 1;
           height = 1;
       }
@@ -69,7 +68,7 @@ export const createElement = (payload: CreateElementPayload): IElement => {
     rotation: 0,
     visible: true,
     locked: false,
-    text: type === 'text' ? '双击输入文本' : '',
+    text: '',
     
     style: defaultStyle,
     

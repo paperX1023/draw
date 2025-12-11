@@ -3,12 +3,14 @@ import type { FederatedPointerEvent } from "pixi.js";
 import type { ElementType } from "@/types/elements";
 import { executeCommand } from "@/core/history/HistoryManager";
 import { CreateElementCommand } from "@/core/commands/CreateElementCommand";
+import { PixiEngine } from "@/core/render/PixiEngine";
 
 export class DrawTool extends BaseTool {
   name: string;
   private startX = 0;
   private startY = 0;
   private drawingId: string | null = null;
+  private engine = PixiEngine.getInstance();
 
   constructor(toolName: string) {
     super();
@@ -16,8 +18,9 @@ export class DrawTool extends BaseTool {
   }
 
   onPointerDown(e: FederatedPointerEvent, hitElementId: string | null) {
-    this.startX = e.global.x;
-    this.startY = e.global.y;
+    const world = this.engine.screenToWorld(e.global.clone());
+    this.startX = world.x;
+    this.startY = world.y;
 
     this.drawingId = this.store.createNewElementAt(
       this.name as ElementType,
@@ -30,14 +33,14 @@ export class DrawTool extends BaseTool {
 
   onPointerMove(e: FederatedPointerEvent) {
     if (!this.drawingId) return;
-
-    const currentX = e.global.x;
-    const currentY = e.global.y;
+    const world = this.engine.screenToWorld(e.global.clone());
+    const currentX = world.x;
+    const currentY = world.y;
 
     const newX = currentX > this.startX ? this.startX : currentX;
     const newY = currentY > this.startY ? this.startY : currentY;
-    const newW = Math.abs(currentX - this.startX);
-    const newH = Math.abs(currentY - this.startY);
+    const newW = Math.max(Math.abs(currentX - this.startX), 1);
+    const newH = Math.max(Math.abs(currentY - this.startY), 1);
 
     this.store.updateElement(this.drawingId, {
       x: newX,

@@ -16,7 +16,7 @@ export class PixiEngine {
 
   private _isInitialized = false;
 
-  // 当前缩放和偏移，用来做持久化
+  // 当前缩放和偏移
   private _zoom = 1;
   private _offsetX = 0;
   private _offsetY = 0;
@@ -30,7 +30,7 @@ export class PixiEngine {
     return this._instance;
   }
 
-  /** 从 localStorage 读取上一次视图 */
+  // 从 localStorage 读取上一次视图
   private loadViewportFromStorage() {
     try {
       const raw = localStorage.getItem(VIEWPORT_KEY);
@@ -45,7 +45,7 @@ export class PixiEngine {
     }
   }
 
-  /** 保存当前视图到 localStorage */
+  // 保存当前视图到 localStorage
   private saveViewportToStorage() {
     const payload: ViewportData = {
       zoom: this._zoom,
@@ -55,11 +55,9 @@ export class PixiEngine {
     localStorage.setItem(VIEWPORT_KEY, JSON.stringify(payload));
   }
 
-  /** 初始化 Pixi */
   public async init(container: HTMLElement) {
     if (this._isInitialized) return;
 
-    // 先把上次的视图状态读出来（不直接用，等 stage 创建好再应用）
     this.loadViewportFromStorage();
 
     this.app = new Application();
@@ -74,10 +72,8 @@ export class PixiEngine {
 
     this.stage = this.app.stage;
     this.stage.eventMode = "static";
-    // 很大的 hitArea 作为“无限画布”
     this.stage.hitArea = new Rectangle(-50000, -50000, 100000, 100000);
 
-    // ✅ 在这里应用缩放和偏移（如果本地有存的话）
     this.stage.scale.x = this._zoom;
     this.stage.scale.y = this._zoom;
     this.stage.position.x = this._offsetX;
@@ -118,13 +114,12 @@ export class PixiEngine {
     return this.stage?.scale.x ?? 1;
   }
 
-  // ✅ 以屏幕坐标 (screenX, screenY) 为中心缩放（兼容 Pixi v8）
+  // 以屏幕坐标为中心缩放
   public setZoomAt(factor: number, screenX: number, screenY: number) {
     if (!this.stage) return;
     const stage = this.stage;
 
     const screenPoint = new Point(screenX, screenY);
-    // 缩放前鼠标对应的世界坐标
     const worldBefore = this.screenToWorld(screenPoint);
 
     // 更新缩放
@@ -148,7 +143,6 @@ export class PixiEngine {
     this.saveViewportToStorage();
   }
 
-  // ✅ 按指定偏移平移画布（兼容 Pixi v8）
   public panBy(dx: number, dy: number) {
     if (!this.stage) return;
 

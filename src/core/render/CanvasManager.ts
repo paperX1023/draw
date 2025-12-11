@@ -18,6 +18,7 @@ interface IElementData {
   width: number;
   height: number;
   rotation?: number;
+  visible?: boolean;
   [key: string]: any;
 }
 
@@ -90,6 +91,8 @@ export class CanvasManager {
     }
 
     displayObject = newDisplayObject as Container;
+
+    displayObject.visible = elementData.visible !== false;
 
     if (!this.pixiObjectMap.has(elementData.id)) {
       this.pixiObjectMap.set(elementData.id, displayObject);

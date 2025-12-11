@@ -1,5 +1,13 @@
 import { Application, Container, Rectangle, Point } from "pixi.js";
 
+const VIEWPORT_KEY = 'canvas-viewport-v1';
+
+interface ViewportData {
+  zoom: number;
+  offsetX: number;
+  offsetY: number;
+}
+
 export class PixiEngine {
   private static _instance: PixiEngine;
 
@@ -7,7 +15,11 @@ export class PixiEngine {
   public stage: Container | null = null;
 
   private _isInitialized = false;
-  private _zoom = 1; // 当前缩放
+
+  // 当前缩放和偏移，用来做持久化
+  private _zoom = 1;
+  private _offsetX = 0;
+  private _offsetY = 0;
 
   private constructor() {}
 
@@ -18,8 +30,37 @@ export class PixiEngine {
     return this._instance;
   }
 
+  /** 从 localStorage 读取上一次视图 */
+  private loadViewportFromStorage() {
+    try {
+      const raw = localStorage.getItem(VIEWPORT_KEY);
+      if (!raw) return;
+
+      const data = JSON.parse(raw) as Partial<ViewportData>;
+      if (typeof data.zoom === 'number') this._zoom = data.zoom;
+      if (typeof data.offsetX === 'number') this._offsetX = data.offsetX;
+      if (typeof data.offsetY === 'number') this._offsetY = data.offsetY;
+    } catch {
+      // ignore
+    }
+  }
+
+  /** 保存当前视图到 localStorage */
+  private saveViewportToStorage() {
+    const payload: ViewportData = {
+      zoom: this._zoom,
+      offsetX: this._offsetX,
+      offsetY: this._offsetY,
+    };
+    localStorage.setItem(VIEWPORT_KEY, JSON.stringify(payload));
+  }
+
+  /** 初始化 Pixi */
   public async init(container: HTMLElement) {
     if (this._isInitialized) return;
+
+    // 先把上次的视图状态读出来（不直接用，等 stage 创建好再应用）
+    this.loadViewportFromStorage();
 
     this.app = new Application();
 
@@ -36,9 +77,11 @@ export class PixiEngine {
     // 很大的 hitArea 作为“无限画布”
     this.stage.hitArea = new Rectangle(-50000, -50000, 100000, 100000);
 
-    // 初始缩放 & 平移
-    this.stage.scale.set(1);
-    this.stage.position.set(0, 0);
+    // ✅ 在这里应用缩放和偏移（如果本地有存的话）
+    this.stage.scale.x = this._zoom;
+    this.stage.scale.y = this._zoom;
+    this.stage.position.x = this._offsetX;
+    this.stage.position.y = this._offsetY;
 
     container.appendChild(this.app.canvas);
     this._isInitialized = true;
@@ -75,7 +118,7 @@ export class PixiEngine {
     return this.stage?.scale.x ?? 1;
   }
 
-  // 以屏幕坐标 (screenX, screenY) 为中心缩放
+  // ✅ 以屏幕坐标 (screenX, screenY) 为中心缩放（兼容 Pixi v8）
   public setZoomAt(factor: number, screenX: number, screenY: number) {
     if (!this.stage) return;
     const stage = this.stage;
@@ -86,25 +129,45 @@ export class PixiEngine {
 
     // 更新缩放
     const nextZoom = Math.min(4, Math.max(0.2, this._zoom * factor));
-    this._zoom = nextZoom;
-    stage.scale.set(this._zoom);
+    if (nextZoom === this._zoom) return;
 
-    // 调整平移
-    stage.position.set(
-      screenPoint.x - worldBefore.x * this._zoom,
-      screenPoint.y - worldBefore.y * this._zoom
-    );
+    this._zoom = nextZoom;
+    stage.scale.x = this._zoom;
+    stage.scale.y = this._zoom;
+
+    // 调整平移，让缩放围绕鼠标进行
+    const newOffsetX = screenPoint.x - worldBefore.x * this._zoom;
+    const newOffsetY = screenPoint.y - worldBefore.y * this._zoom;
+
+    stage.position.x = newOffsetX;
+    stage.position.y = newOffsetY;
+
+    // 记住偏移值
+    this._offsetX = newOffsetX;
+    this._offsetY = newOffsetY;
+    this.saveViewportToStorage();
   }
 
-  // 按指定偏移平移画布
+  // ✅ 按指定偏移平移画布（兼容 Pixi v8）
   public panBy(dx: number, dy: number) {
     if (!this.stage) return;
-    this.stage.position.x += dx;
-    this.stage.position.y += dy;
+
+    const stage = this.stage;
+    const newOffsetX = stage.position.x + dx;
+    const newOffsetY = stage.position.y + dy;
+
+    stage.position.x = newOffsetX;
+    stage.position.y = newOffsetY;
+
+    this._offsetX = newOffsetX;
+    this._offsetY = newOffsetY;
+    this.saveViewportToStorage();
   }
 
   public destroy() {
     this.app?.destroy({ removeView: true }, { children: true });
     this._isInitialized = false;
+    this.app = null;
+    this.stage = null;
   }
 }

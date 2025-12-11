@@ -20,30 +20,33 @@
       </button>
     </div>
 
-    <!--    <div class="right-section">-->
-    <!--      <button class="primary-btn">导出</button>-->
-    <!--    </div>-->
   </header>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
-import { undo, redo, canUndo, canRedo, subscribe } from '../../core/history/HistoryManager';
+import { undo, redo, canUndo, canRedo, subscribe } from '@/core/history/HistoryManager';
 
-const canUndoState = ref(canUndo());
-const canRedoState = ref(canRedo());
+const canUndoState = ref<boolean>(canUndo());
+const canRedoState = ref<boolean>(canRedo());
 
 const updateHistoryState = () => {
   canUndoState.value = canUndo();
   canRedoState.value = canRedo();
 };
 
-let unsubscribe = null;
+let unsubscribe: (() => void) | null = null;
+
 onMounted(() => {
   unsubscribe = subscribe(updateHistoryState);
   updateHistoryState();
 });
-onUnmounted(() => { if (unsubscribe) unsubscribe(); });
+
+onUnmounted(() => {
+  if (unsubscribe) {
+    unsubscribe();
+  }
+});
 </script>
 
 <style scoped>

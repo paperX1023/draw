@@ -1,34 +1,59 @@
 <template>
   <div class="toolbox-dock">
-
     <div class="tool-item" data-tooltip="选择 (V)">
-      <button :class="{ active: store.activeTool === 'select' }" @click="setTool('select')">
+      <button
+        :class="{ active: store.activeTool === 'select' }"
+        @click="setTool('select')"
+      >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
           <path
             d="M5.65376 2.44967C5.20266 2.2332 4.68855 2.56986 4.70012 3.07008L5.46573 21.1685C5.48737 21.6801 6.09938 21.9519 6.47945 21.6186L10.4936 18.0984L15.2686 21.7424L17.1467 19.2812L12.2895 15.5923L17.0536 14.7229C17.5454 14.6332 17.7752 14.0278 17.4432 13.652L5.65376 2.44967Z"
-            fill="currentColor" />
+            fill="currentColor"
+          />
         </svg>
       </button>
     </div>
 
     <div class="divider"></div>
 
-    <div class="tool-item has-submenu" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave">
+    <div
+      class="tool-item has-submenu"
+      @mouseenter="handleMouseEnter"
+      @mouseleave="handleMouseLeave"
+    >
       <button :class="{ active: isShapeTool }">
-        <span v-if="store.activeTool === 'circle'" class="shape-icon circle"></span>
-        <span v-else-if="store.activeTool === 'triangle'" class="shape-icon triangle"></span>
+        <span
+          v-if="store.activeTool === 'circle'"
+          class="shape-icon circle"
+        ></span>
+        <span
+          v-else-if="store.activeTool === 'triangle'"
+          class="shape-icon triangle"
+        ></span>
         <span v-else class="shape-icon rect"></span>
       </button>
 
       <div class="submenu-wrapper" v-show="showShapes">
         <div class="submenu">
-          <button @click="setTool('rect')" title="矩形" :class="{ active: store.activeTool === 'rect' }">
+          <button
+            @click="setTool('rect')"
+            title="矩形"
+            :class="{ active: store.activeTool === 'rect' }"
+          >
             <div class="shape-preview rect"></div>
           </button>
-          <button @click="setTool('circle')" title="圆形 / 椭圆" :class="{ active: store.activeTool === 'circle' }">
+          <button
+            @click="setTool('circle')"
+            title="圆形 / 椭圆"
+            :class="{ active: store.activeTool === 'circle' }"
+          >
             <div class="shape-preview circle"></div>
           </button>
-          <button @click="setTool('triangle')" title="三角形" :class="{ active: store.activeTool === 'triangle' }">
+          <button
+            @click="setTool('triangle')"
+            title="三角形"
+            :class="{ active: store.activeTool === 'triangle' }"
+          >
             <div class="shape-preview triangle"></div>
           </button>
         </div>
@@ -36,8 +61,18 @@
     </div>
 
     <div class="tool-item" data-tooltip="文本 (T)">
-      <button :class="{ active: store.activeTool === 'text' }" @click="setTool('text')">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <button
+        :class="{ active: store.activeTool === 'text' }"
+        @click="setTool('text')"
+      >
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
           <path d="M4 7V4h16v3M9 20h6M12 4v16" />
         </svg>
       </button>
@@ -45,73 +80,94 @@
 
     <div class="tool-item" data-tooltip="插入图片">
       <button @click="triggerUpload">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round">
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
           <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
           <circle cx="8.5" cy="8.5" r="1.5" />
           <polyline points="21 15 16 10 5 21" />
         </svg>
       </button>
 
-      <input type="file" ref="fileInputRef" accept="image/png, image/jpeg, image/jpg, image/gif" style="display: none"
-        @change="handleFileChange">
+      <input
+        type="file"
+        ref="fileInputRef"
+        accept="image/png, image/jpeg, image/jpg, image/gif"
+        style="display: none"
+        @change="handleFileChange"
+      />
     </div>
-
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useEditorStore } from '@/stores/editorStore';
 
-// 获取 Store 实例
+type ShapeTool = 'rect' | 'circle' | 'triangle' | 'round-rect';
+type ToolName = ShapeTool | 'select' | 'text';
+
 const store = useEditorStore();
 
 const showShapes = ref(false);
-let timer = null;
-const fileInputRef = ref(null);
+const fileInputRef = ref<HTMLInputElement | null>(null);
 
-// 计算属性
-const isShapeTool = computed(() => {
-  return ['rect', 'circle', 'triangle', 'round-rect'].includes(store.activeTool);
+let timer: number | null = null;
+
+// 当前是否处于任意形状工具
+const isShapeTool = computed<boolean>(() => {
+  const shapeTools: ShapeTool[] = ['rect', 'circle', 'triangle', 'round-rect'];
+  return shapeTools.includes(store.activeTool as ShapeTool);
 });
 
 // 切换工具
-const setTool = (tool) => {
+const setTool = (tool: ToolName) => {
   store.setActiveTool(tool);
   showShapes.value = false;
 };
 
-// 悬停逻辑
 const handleMouseEnter = () => {
-  if (timer) clearTimeout(timer);
+  if (timer !== null) {
+    clearTimeout(timer);
+    timer = null;
+  }
   showShapes.value = true;
 };
 
 const handleMouseLeave = () => {
-  timer = setTimeout(() => {
+  if (timer !== null) {
+    clearTimeout(timer);
+  }
+  timer = window.setTimeout(() => {
     showShapes.value = false;
+    timer = null;
   }, 300);
 };
 
-// 图片上传
 const triggerUpload = () => {
   fileInputRef.value?.click();
 };
 
-const handleFileChange = async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
+const handleFileChange = async (e: Event) => {
+  const target = e.target as HTMLInputElement | null;
+  if (!target || !target.files || target.files.length === 0) return;
+
+  const file = target.files[0];
 
   try {
-    // Store自动处理：IndexedDB存储 -> 生成URL -> 获取尺寸 -> 创建元素 -> 选中
     await store.addImageToCanvas(file);
-    
   } catch (error) {
     console.error('图片加载失败:', error);
     alert('图片加载失败，请重试');
   } finally {
-    e.target.value = ''; // 重置 input，允许重复上传
+    target.value = '';
   }
 };
 </script>

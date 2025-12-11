@@ -14,7 +14,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import EditorHeader from '../components/layout/EditorHeader.vue';
 import ToolboxPanel from '../components/layout/ToolboxPanel.vue';
 import PropertyPanel from '../components/layout/PropertyPanel.vue';
@@ -30,7 +30,7 @@ useKeyboard();
   flex-direction: column;
   width: 100%;
   height: 100%;
-  background-color: #f8f9fa; /* 整体浅灰底 */
+  background-color: #f8f9fa;
   overflow: hidden;
   color: #1f2937;
   font-family: 'Inter', sans-serif;

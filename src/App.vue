@@ -2,7 +2,7 @@
   <Editor />
 </template>
 
-<script setup>
+<script setup lang="ts">
 import Editor from './views/Editor.vue';
 </script>
 

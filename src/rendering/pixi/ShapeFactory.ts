@@ -122,7 +122,7 @@ export const updateOrCreateShape = (
       displayObject = new Container();
 
       const textNode = new Text({
-        text: elementData.text ?? "",
+        text: elementData.text || "双击编辑",
         style: {
           fontSize: elementData.style.fontSize || 24,
           fontFamily: elementData.style.fontFamily || "Arial",
@@ -203,7 +203,7 @@ export const updateOrCreateShape = (
     const textNode = displayObject.getChildByLabel("text") as Text;
     const style = elementData.style || {};
 
-    textNode.text = elementData.text ?? "";
+    textNode.text = elementData.text || "双击编辑";
     textNode.style.fontSize = style.fontSize || 24;
     textNode.style.fontFamily = style.fontFamily || "Arial";
     textNode.style.fill = style.fontColor || 0x000000;

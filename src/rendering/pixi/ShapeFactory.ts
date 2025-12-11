@@ -65,7 +65,7 @@ const updateShapeLabel = (container: Container, elementData: IElement) => {
   label.y = elementData.height / 2;
 };
 
-// ---------- 3. 通用函数：滤镜 ----------
+// 滤镜
 const applyFilters = (displayObject: Container, filterData: any) => {
   if (!filterData) {
     displayObject.filters = [];
@@ -84,7 +84,7 @@ const applyFilters = (displayObject: Container, filterData: any) => {
   displayObject.filters = filtersToApply;
 };
 
-// 纹理缓存（避免重复加载）
+// 纹理缓存
 const runtimeTextureCache = new Map<string, Texture>();
 
 async function loadTextureForUrl(url: string): Promise<Texture> {
@@ -122,7 +122,7 @@ export const updateOrCreateShape = (
       displayObject = new Container();
 
       const textNode = new Text({
-        text: elementData.text || "双击编辑",
+        text: elementData.text ?? "",
         style: {
           fontSize: elementData.style.fontSize || 24,
           fontFamily: elementData.style.fontFamily || "Arial",
@@ -203,7 +203,7 @@ export const updateOrCreateShape = (
     const textNode = displayObject.getChildByLabel("text") as Text;
     const style = elementData.style || {};
 
-    textNode.text = elementData.text || "双击编辑";
+    textNode.text = elementData.text ?? "";
     textNode.style.fontSize = style.fontSize || 24;
     textNode.style.fontFamily = style.fontFamily || "Arial";
     textNode.style.fill = style.fontColor || 0x000000;

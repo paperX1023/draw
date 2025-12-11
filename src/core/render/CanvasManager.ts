@@ -1,4 +1,4 @@
-import { Container, FederatedPointerEvent, Point } from "pixi.js";
+import { Container, FederatedPointerEvent, Text, Graphics } from "pixi.js";
 import { PixiEngine } from "./PixiEngine";
 import { updateOrCreateShape } from "@/rendering/pixi/ShapeFactory";
 import {
@@ -111,6 +111,18 @@ export class CanvasManager {
         this.handleElementTap(elementData.id, e);
       });
     }
+  }
+
+  // 设置元素文本可见性
+  public setElementTextVisible(elementId: string, visible: boolean) {
+    const obj = this.pixiObjectMap.get(elementId);
+    if (!obj) return;
+
+    const label = obj.getChildByLabel("label") as Text | undefined;
+    if (label) label.visible = visible;
+
+    const textNode = obj.getChildByLabel("text") as Text | undefined;
+    if (textNode) textNode.visible = visible;
   }
 
   // 单击：选中 + 交给工具

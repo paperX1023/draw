@@ -55,11 +55,10 @@ let mouseUpHandler: ((ev: MouseEvent) => void) | null = null;
 let lastPanX = 0;
 let lastPanY = 0;
 
-// ✅ 编辑结束：恢复 Pixi 元素可见 + 更新 transformer
+// 恢复 Pixi 元素可见 + 更新 transformer
 const finishEditing = () => {
   if (editingId.value) {
-    // 结束编辑时，让该元素重新显示
-    store.updateElement(editingId.value, { visible: true });
+    manager.setElementTextVisible(editingId.value, true);
   }
 
   editingId.value = null;
@@ -108,14 +107,11 @@ onMounted(async () => {
   // 初始化交互
   manager.initInteraction();
 
-  // ✅ 双击开始编辑：记录 id + 隐藏 Pixi 文本
   manager.onEditStart = (id: string) => {
+    manager.setElementTextVisible(id, false);
     editingId.value = id;
-    // 在 store 里把该元素设为不可见
-    store.updateElement(id, { visible: false });
   };
 
-  // ✅ TextEditorOverlay 内部 blur / Enter 后 emit('finish') → 这里结束编辑
   manager.onEditEnd = () => {
     finishEditing();
   };

@@ -27,7 +27,8 @@ export const createElement = (payload: CreateElementPayload): IElement => {
     x, 
     y, 
     style = {},
-    ...rest // 捕获剩余参数
+    text,
+    ...rest
   } = payload;
 
   let width = payload.width;
@@ -68,7 +69,7 @@ export const createElement = (payload: CreateElementPayload): IElement => {
     rotation: 0,
     visible: true,
     locked: false,
-    text: '',
+    text: text ?? '',
     
     style: defaultStyle,
     

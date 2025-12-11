@@ -1,13 +1,31 @@
 <template>
   <div class="input-control">
     <label>{{ label }}</label>
-    <input type="color" :value="modelValue" @input="$emit('update:modelValue', $event.target.value)" />
+    <input
+      type="color"
+      :value="modelValue"
+      @input="onInput"
+    />
   </div>
 </template>
-<script setup>
-defineProps(['label', 'modelValue']);
-defineEmits(['update:modelValue']);
+
+<script setup lang="ts">
+const props = defineProps<{
+  label: string;
+  modelValue: string;
+}>();
+
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: string): void;
+}>();
+
+const onInput = (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  emit('update:modelValue', target.value);
+};
+
 </script>
+
 <style scoped>
 .input-control {
   display: flex;

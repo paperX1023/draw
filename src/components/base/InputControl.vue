@@ -1,19 +1,34 @@
 <template>
   <div class="input-control">
     <label>{{ label }}</label>
-    <input type="number" :value="modelValue" @input="handleInput" />
+    <input
+      type="number"
+      :value="modelValue"
+      @input="handleInput"
+    />
   </div>
 </template>
-<script setup>
-const props = defineProps(['label', 'modelValue']);
-const emit = defineEmits(['update:modelValue', 'change']);
 
-const handleInput = (e) => {
-  const val = parseFloat(e.target.value);
+<script setup lang="ts">
+const props = defineProps<{
+  label: string;
+  modelValue: number;
+}>();
+
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: number): void;
+  (e: 'change', value: number): void;
+}>();
+
+const handleInput = (e: Event) => {
+  const target = e.target as HTMLInputElement;
+  const val = parseFloat(target.value);
+
   emit('update:modelValue', val);
   emit('change', val);
 };
 </script>
+
 <style scoped>
 .input-control {
   display: flex;
